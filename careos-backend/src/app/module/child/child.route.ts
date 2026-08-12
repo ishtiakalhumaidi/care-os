@@ -74,14 +74,17 @@ router.get(
   checkAuth(Role.GUARDIAN),
   ChildController.getMyChildById,
 );
-
-router.post(
-  "/:id/guardians/self",
-  checkAuth(Role.GUARDIAN),
-  validateRequest(ChildValidation.selfLinkGuardianZodSchema),
-  ChildController.selfLinkGuardian,
+router.patch(
+  "/:id/classroom",
+  checkAuth(Role.TENANT_OWNER, Role.CENTER_ADMIN),
+  validateRequest(ChildValidation.assignClassroomZodSchema),
+  ChildController.assignClassroom,
 );
-
+router.patch(
+  "/:id/classroom/remove",
+  checkAuth(Role.TENANT_OWNER, Role.CENTER_ADMIN),
+  ChildController.unassignClassroom,
+);
 router.patch(
   "/:id/guardians/:linkId/pickup",
   checkAuth(Role.GUARDIAN),

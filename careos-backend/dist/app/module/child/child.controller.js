@@ -67,6 +67,42 @@ const getChildById = catchAsync(async (req, res) => {
         data: result,
     });
 });
+const getMyChildById = catchAsync(async (req, res) => {
+    const { id } = req.params;
+    const guardianId = req.user.id;
+    const tenantId = req.user.tenantId;
+    const result = await ChildService.getMyChildById(id, guardianId, tenantId);
+    sendResponse(res, {
+        httpStatusCode: status.OK,
+        success: true,
+        message: "Child fetched successfully",
+        data: result,
+    });
+});
+const updatePickupPermission = catchAsync(async (req, res) => {
+    const { id, linkId } = req.params;
+    const requesterId = req.user.id;
+    const tenantId = req.user.tenantId;
+    const result = await ChildService.updatePickupPermission(id, linkId, requesterId, tenantId, req.body);
+    sendResponse(res, {
+        httpStatusCode: status.OK,
+        success: true,
+        message: "Pickup permission updated",
+        data: result,
+    });
+});
+const selfUnlinkGuardian = catchAsync(async (req, res) => {
+    const { id, linkId } = req.params;
+    const requesterId = req.user.id;
+    const tenantId = req.user.tenantId;
+    await ChildService.selfUnlinkGuardian(id, linkId, requesterId, tenantId);
+    sendResponse(res, {
+        httpStatusCode: status.OK,
+        success: true,
+        message: "Guardian removed",
+        data: null,
+    });
+});
 const approveChild = catchAsync(async (req, res) => {
     const { id } = req.params;
     const staffId = req.user.id;
@@ -151,14 +187,45 @@ const reactivateChild = catchAsync(async (req, res) => {
         data: result,
     });
 });
+const assignClassroom = catchAsync(async (req, res) => {
+    const { id } = req.params;
+    const tenantId = req.user.tenantId;
+    const staffBranchId = req.user.role === "TENANT_OWNER" ? undefined : req.user.branchId;
+    const result = await ChildService.assignClassroom(id, req.body, tenantId, staffBranchId);
+    sendResponse(res, {
+        httpStatusCode: status.OK,
+        success: true,
+        message: "Classroom assigned successfully",
+        data: result,
+    });
+});
+const unassignClassroom = catchAsync(async (req, res) => {
+    const { id } = req.params;
+    const tenantId = req.user.tenantId;
+    const staffBranchId = req.user.role === "TENANT_OWNER"
+        ? undefined
+        : req.user.branchId;
+    const result = await ChildService.unassignClassroom(id, tenantId, staffBranchId);
+    sendResponse(res, {
+        httpStatusCode: status.OK,
+        success: true,
+        message: "Child removed from classroom",
+        data: result,
+    });
+});
 export const ChildController = {
     applyForChild,
     getAllChildren,
     getChildById,
+    getMyChildById,
     approveChild,
     rejectChild,
     linkGuardian,
     suspendChild,
     reactivateChild,
     unlinkGuardian,
+    selfUnlinkGuardian,
+    updatePickupPermission,
+    assignClassroom,
+    unassignClassroom
 };

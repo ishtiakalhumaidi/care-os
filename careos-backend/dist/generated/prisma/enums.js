@@ -36,7 +36,8 @@ export const InvoiceStatus = {
 export const InviteStatus = {
     PENDING: 'PENDING',
     ACCEPTED: 'ACCEPTED',
-    EXPIRED: 'EXPIRED'
+    EXPIRED: 'EXPIRED',
+    DENIED: 'DENIED'
 };
 export const ShiftStatus = {
     SCHEDULED: 'SCHEDULED',

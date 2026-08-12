@@ -18,3 +18,17 @@ model ChildGuardian {
 
   @@unique([childId, userId])
 }
+
+model GuardianRequest {
+  id            String       @id @default(uuid())
+  childId       String
+  child         Child        @relation(fields: [childId], references: [id], onDelete: Cascade)
+  requestedById String
+  requestedBy   User         @relation(fields: [requestedById], references: [id])
+  email         String
+  relationship  String
+  canPickup     Boolean      @default(true)
+  status        InviteStatus @default(PENDING)
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+}

@@ -40,6 +40,10 @@ const selfLinkGuardianZodSchema = z.object({
   relationship: z.string({ error: "Relationship is required" }).min(2),
   canPickup: z.boolean().optional(),
 });
+
+const assignClassroomZodSchema = z.object({
+  classroomId: z.string({ error: "Classroom ID is required" }).uuid("Invalid classroom ID"),
+});
 export const ChildValidation = {
   applyForChildZodSchema,
   approveChildZodSchema,
@@ -47,5 +51,6 @@ export const ChildValidation = {
   linkGuardianZodSchema,
   suspendChildZodSchema,
   updatePickupZodSchema,
-  selfLinkGuardianZodSchema
+  selfLinkGuardianZodSchema,
+  assignClassroomZodSchema
 };

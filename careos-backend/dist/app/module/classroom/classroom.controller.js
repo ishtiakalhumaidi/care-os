@@ -27,10 +27,34 @@ const getAllClassrooms = catchAsync(async (req, res) => {
 const getClassroomById = catchAsync(async (req, res) => {
     const { id } = req.params;
     const tenantId = req.user.tenantId;
-    if (req.user.role === "TEACHER" && req.user.classroomId !== id) {
-        throw new AppError(status.FORBIDDEN, "You do not have access to this classroom");
+    if (req.user.role === "TEACHER") {
+        const isAssigned = await ClassroomService.isTeacherAssigned(id, req.user.id);
+        if (!isAssigned) {
+            throw new AppError(status.FORBIDDEN, "You do not have access to this classroom");
+        }
     }
     const result = await ClassroomService.getClassroomById(id, tenantId);
+    sendResponse(res, {
+        httpStatusCode: status.OK,
+        success: true,
+        message: "Classroom fetched successfully",
+        data: result,
+    });
+});
+const getMyClassrooms = catchAsync(async (req, res) => {
+    const teacherId = req.user.id;
+    const result = await ClassroomService.getMyClassrooms(teacherId);
+    sendResponse(res, {
+        httpStatusCode: status.OK,
+        success: true,
+        message: "Classrooms fetched successfully",
+        data: result,
+    });
+});
+const getMyClassroomById = catchAsync(async (req, res) => {
+    const { id } = req.params;
+    const teacherId = req.user.id;
+    const result = await ClassroomService.getMyClassroomById(id, teacherId);
     sendResponse(res, {
         httpStatusCode: status.OK,
         success: true,
@@ -92,6 +116,8 @@ export const ClassroomController = {
     createClassroom,
     getAllClassrooms,
     getClassroomById,
+    getMyClassrooms,
+    getMyClassroomById,
     updateClassroom,
     deleteClassroom,
     assignTeacher,

@@ -26,10 +26,24 @@ const linkGuardianZodSchema = z.object({
 const suspendChildZodSchema = z.object({
     reason: z.string({ error: "A reason is required" }).min(3),
 });
+const updatePickupZodSchema = z.object({
+    canPickup: z.boolean({ error: "canPickup is required" }),
+});
+const selfLinkGuardianZodSchema = z.object({
+    email: z.string({ error: "Guardian email is required" }).email("Invalid email"),
+    relationship: z.string({ error: "Relationship is required" }).min(2),
+    canPickup: z.boolean().optional(),
+});
+const assignClassroomZodSchema = z.object({
+    classroomId: z.string({ error: "Classroom ID is required" }).uuid("Invalid classroom ID"),
+});
 export const ChildValidation = {
     applyForChildZodSchema,
     approveChildZodSchema,
     rejectChildZodSchema,
     linkGuardianZodSchema,
     suspendChildZodSchema,
+    updatePickupZodSchema,
+    selfLinkGuardianZodSchema,
+    assignClassroomZodSchema
 };

@@ -32,6 +32,7 @@ enum InviteStatus {
   PENDING
   ACCEPTED
   EXPIRED
+  DENIED
 }
 
 enum ShiftStatus {
@@ -40,7 +41,12 @@ enum ShiftStatus {
   COMPLETED
   CANCELLED
 }
-
+enum AttendanceStatus {
+  PENDING_CHECKIN
+  CHECKED_IN
+  PENDING_CHECKOUT
+  CHECKED_OUT
+}
 enum DocumentType {
   IMMUNIZATION_RECORD
   ENROLLMENT_CONTRACT

@@ -6,6 +6,8 @@ import { ClassroomRoutes } from "../module/classroom/classroom.route.js";
 import { ChildRoutes } from "../module/child/child.route.js";
 import { UserRoutes } from "../module/user/user.route.js";
 import { PlanRoutes } from "../module/plan/plan.route.js";
+import { GuardianRequestRoutes } from "../module/guardianRequest/guardianRequest.route.js";
+import { AttendanceRoutes } from "../module/attendance/attendance.route.js";
 
 const router = Router();
 
@@ -16,5 +18,7 @@ router.use("/branches", BranchRoutes);
 router.use("/classrooms", ClassroomRoutes);
 router.use("/children", ChildRoutes);
 router.use("/plans", PlanRoutes);
+router.use("/guardian-requests", GuardianRequestRoutes);
+router.use("/attendance", AttendanceRoutes);
 
 export const IndexRoutes = router;

@@ -3,14 +3,24 @@ model Attendance {
   childId String
   child   Child  @relation(fields: [childId], references: [id], onDelete: Cascade)
 
-  checkInTime  DateTime
-  checkOutTime DateTime?
-  checkedInBy  String
-  checkedOutBy String?
+  status AttendanceStatus @default(PENDING_CHECKIN)
+
+  checkInRequestedAt DateTime?
+  checkInRequestedBy String?
+  checkInTime        DateTime?
+  checkedInBy        String?
+
+  checkOutRequestedAt  DateTime?
+  checkOutRequestedBy  String?
+  checkOutReason       String?
+  checkOutTime         DateTime?
+  checkedOutBy         String?
+  pickedUpByGuardianId String?
+  createdAt            DateTime  @default(now())
 
   syncedAt DateTime @default(now())
 
-  @@index([childId, checkInTime])
+  @@index([childId, status])
 }
 
 model TimelineEvent {
@@ -18,8 +28,8 @@ model TimelineEvent {
   childId String
   child   Child  @relation(fields: [childId], references: [id], onDelete: Cascade)
 
-  eventType   String // "NAP", "MEAL", "BATHROOM", "NOTE"
+  eventType   String
   description String?
-  loggedBy    String // Teacher ID
+  loggedBy    String
   loggedAt    DateTime @default(now())
 }

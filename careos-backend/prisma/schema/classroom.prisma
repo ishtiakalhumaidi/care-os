@@ -1,16 +1,28 @@
 model Classroom {
-  id            String @id @default(uuid())
+  id            String   @id @default(uuid())
   name          String
   ageGroup      String
   legalCapacity Int
-  ratioLimit    Int 
+  ratioLimit    Int
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 
-  branchId String
-  branch   Branch @relation(fields: [branchId], references: [id], onDelete: Cascade)
+  branchId           String
+  branch             Branch             @relation(fields: [branchId], references: [id], onDelete: Cascade)
+  teacherAssignments ClassroomTeacher[]
+  children           Child[]
+  shifts             Shift[]
+  users              User[]
+}
 
-  children Child[]
-  shifts   Shift[]
-  users    User[]
+model ClassroomTeacher {
+  id          String    @id @default(uuid())
+  classroomId String
+  classroom   Classroom @relation(fields: [classroomId], references: [id], onDelete: Cascade)
+  teacherId   String
+  teacher     User      @relation("TeacherAssignments", fields: [teacherId], references: [id], onDelete: Cascade)
+  isLead      Boolean   @default(false)
+  assignedAt  DateTime  @default(now())
+
+  @@unique([classroomId, teacherId])
 }

@@ -16,4 +16,9 @@ router.get("/:id", checkAuth(Role.TENANT_OWNER, Role.CENTER_ADMIN, Role.TEACHER)
 router.patch("/:id/approve", checkAuth(Role.TENANT_OWNER, Role.CENTER_ADMIN), validateRequest(ChildValidation.approveChildZodSchema), ChildController.approveChild);
 router.patch("/:id/reject", checkAuth(Role.TENANT_OWNER, Role.CENTER_ADMIN), validateRequest(ChildValidation.rejectChildZodSchema), ChildController.rejectChild);
 router.delete("/:id/guardians/:linkId", checkAuth(Role.TENANT_OWNER, Role.CENTER_ADMIN), ChildController.unlinkGuardian);
+router.get("/mine/:id", checkAuth(Role.GUARDIAN), ChildController.getMyChildById);
+router.patch("/:id/classroom", checkAuth(Role.TENANT_OWNER, Role.CENTER_ADMIN), validateRequest(ChildValidation.assignClassroomZodSchema), ChildController.assignClassroom);
+router.patch("/:id/classroom/remove", checkAuth(Role.TENANT_OWNER, Role.CENTER_ADMIN), ChildController.unassignClassroom);
+router.patch("/:id/guardians/:linkId/pickup", checkAuth(Role.GUARDIAN), validateRequest(ChildValidation.updatePickupZodSchema), ChildController.updatePickupPermission);
+router.delete("/:id/guardians/:linkId/self", checkAuth(Role.GUARDIAN), ChildController.selfUnlinkGuardian);
 export const ChildRoutes = router;

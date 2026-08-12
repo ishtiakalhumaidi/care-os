@@ -74,8 +74,10 @@ export const ModelName = {
     Child: 'Child',
     ChildCodeSequence: 'ChildCodeSequence',
     Classroom: 'Classroom',
+    ClassroomTeacher: 'ClassroomTeacher',
     Document: 'Document',
     ChildGuardian: 'ChildGuardian',
+    GuardianRequest: 'GuardianRequest',
     Invitation: 'Invitation',
     Media: 'Media',
     Conversation: 'Conversation',
@@ -187,6 +189,13 @@ export const ClassroomScalarFieldEnum = {
     updatedAt: 'updatedAt',
     branchId: 'branchId'
 };
+export const ClassroomTeacherScalarFieldEnum = {
+    id: 'id',
+    classroomId: 'classroomId',
+    teacherId: 'teacherId',
+    isLead: 'isLead',
+    assignedAt: 'assignedAt'
+};
 export const DocumentScalarFieldEnum = {
     id: 'id',
     type: 'type',
@@ -209,6 +218,17 @@ export const ChildGuardianScalarFieldEnum = {
     canPickup: 'canPickup',
     billingPreference: 'billingPreference',
     splitPercentage: 'splitPercentage',
+    createdAt: 'createdAt',
+    updatedAt: 'updatedAt'
+};
+export const GuardianRequestScalarFieldEnum = {
+    id: 'id',
+    childId: 'childId',
+    requestedById: 'requestedById',
+    email: 'email',
+    relationship: 'relationship',
+    canPickup: 'canPickup',
+    status: 'status',
     createdAt: 'createdAt',
     updatedAt: 'updatedAt'
 };

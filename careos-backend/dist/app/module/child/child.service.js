@@ -72,6 +72,71 @@ const getChildById = async (id, tenantId, branchId, classroomId) => {
     }
     return child;
 };
+const getMyChildById = async (childId, guardianId, tenantId) => {
+    const child = await prisma.child.findUnique({
+        where: { id: childId },
+        include: childIncludeConfig,
+    });
+    if (!child || child.tenantId !== tenantId) {
+        throw new AppError(status.NOT_FOUND, "Child not found");
+    }
+    const viewerLink = child.guardians?.find((g) => g.userId === guardianId);
+    if (!viewerLink) {
+        throw new AppError(status.FORBIDDEN, "You do not have access to this child");
+    }
+    return { ...child, viewerLink };
+};
+const updatePickupPermission = async (childId, linkId, requesterId, tenantId, payload) => {
+    const child = await prisma.child.findUnique({ where: { id: childId } });
+    if (!child || child.tenantId !== tenantId) {
+        throw new AppError(status.NOT_FOUND, "Child not found");
+    }
+    const requesterLink = await prisma.childGuardian.findUnique({
+        where: { childId_userId: { childId, userId: requesterId } },
+    });
+    if (!requesterLink) {
+        throw new AppError(status.FORBIDDEN, "You do not have access to this child");
+    }
+    if (!requesterLink.isPrimary) {
+        throw new AppError(status.FORBIDDEN, "Only the primary guardian can manage pickup permissions");
+    }
+    const targetLink = await prisma.childGuardian.findUnique({
+        where: { id: linkId },
+    });
+    if (!targetLink || targetLink.childId !== childId) {
+        throw new AppError(status.NOT_FOUND, "Guardian link not found");
+    }
+    return prisma.childGuardian.update({
+        where: { id: linkId },
+        data: { canPickup: payload.canPickup },
+    });
+};
+const selfUnlinkGuardian = async (childId, linkId, requesterId, tenantId) => {
+    const child = await prisma.child.findUnique({ where: { id: childId } });
+    if (!child || child.tenantId !== tenantId) {
+        throw new AppError(status.NOT_FOUND, "Child not found");
+    }
+    const requesterLink = await prisma.childGuardian.findUnique({
+        where: { childId_userId: { childId, userId: requesterId } },
+    });
+    if (!requesterLink) {
+        throw new AppError(status.FORBIDDEN, "You do not have access to this child");
+    }
+    if (!requesterLink.isPrimary) {
+        throw new AppError(status.FORBIDDEN, "Only the primary guardian can remove other guardians");
+    }
+    const targetLink = await prisma.childGuardian.findUnique({
+        where: { id: linkId },
+    });
+    if (!targetLink || targetLink.childId !== childId) {
+        throw new AppError(status.NOT_FOUND, "Guardian link not found");
+    }
+    if (targetLink.isPrimary) {
+        throw new AppError(status.FORBIDDEN, "The primary guardian cannot be removed. Contact staff.");
+    }
+    await prisma.childGuardian.delete({ where: { id: linkId } });
+    return null;
+};
 const assertReviewable = async (id, tenantId, staffBranchId) => {
     const child = await prisma.child.findUnique({ where: { id } });
     if (!child || child.tenantId !== tenantId) {
@@ -104,6 +169,7 @@ const approveChild = async (id, payload, staffId, tenantId, staffBranchId) => {
     if (payload.classroomId) {
         const classroom = await prisma.classroom.findUnique({
             where: { id: payload.classroomId },
+            include: { _count: { select: { teacherAssignments: true } } },
         });
         if (!classroom || classroom.branchId !== child.branchId) {
             throw new AppError(status.BAD_REQUEST, "Invalid classroom for this branch");
@@ -114,19 +180,14 @@ const approveChild = async (id, payload, staffId, tenantId, staffBranchId) => {
         if (currentCount >= classroom.legalCapacity) {
             throw new AppError(status.CONFLICT, `${classroom.name} is at capacity (${classroom.legalCapacity}). Choose another classroom or increase capacity.`);
         }
-    }
-    if (payload.classroomId) {
-        const classroom = await prisma.classroom.findUnique({
-            where: { id: payload.classroomId },
-        });
-        if (!classroom || classroom.branchId !== child.branchId) {
-            throw new AppError(status.BAD_REQUEST, "Invalid classroom for this branch");
+        const teacherCount = classroom._count.teacherAssignments;
+        const prospectiveCount = currentCount + 1;
+        if (teacherCount === 0) {
+            throw new AppError(status.CONFLICT, `${classroom.name} has no teacher assigned. Assign at least one teacher before enrolling children here.`);
         }
-        const currentCount = await prisma.child.count({
-            where: { classroomId: payload.classroomId, status: "ENROLLED" },
-        });
-        if (currentCount >= classroom.legalCapacity) {
-            throw new AppError(status.CONFLICT, `${classroom.name} is at capacity (${classroom.legalCapacity}). Choose another classroom or increase capacity.`);
+        if (prospectiveCount > teacherCount * classroom.ratioLimit) {
+            const teachersNeeded = Math.ceil(prospectiveCount / classroom.ratioLimit);
+            throw new AppError(status.CONFLICT, `${classroom.name} needs at least ${teachersNeeded} teacher(s) to legally enroll a ${prospectiveCount}${prospectiveCount === 1 ? "st" : prospectiveCount === 2 ? "nd" : prospectiveCount === 3 ? "rd" : "th"} child at a 1:${classroom.ratioLimit} ratio. Currently has ${teacherCount}.`);
         }
     }
     return prisma.child.update({
@@ -198,6 +259,60 @@ const unlinkGuardian = async (childId, linkId, tenantId, staffBranchId) => {
     await prisma.childGuardian.delete({ where: { id: linkId } });
     return null;
 };
+const assignClassroom = async (id, payload, tenantId, staffBranchId) => {
+    const child = await prisma.child.findUnique({ where: { id } });
+    if (!child || child.tenantId !== tenantId) {
+        throw new AppError(status.NOT_FOUND, "Child not found");
+    }
+    if (staffBranchId && child.branchId !== staffBranchId) {
+        throw new AppError(status.FORBIDDEN, "You do not have access to this branch");
+    }
+    if (!["ENROLLED", "WAITLISTED"].includes(child.status)) {
+        throw new AppError(status.CONFLICT, "Only enrolled or waitlisted children can be assigned a classroom");
+    }
+    const classroom = await prisma.classroom.findUnique({
+        where: { id: payload.classroomId },
+        include: { _count: { select: { teacherAssignments: true } } },
+    });
+    if (!classroom || classroom.branchId !== child.branchId) {
+        throw new AppError(status.BAD_REQUEST, "Invalid classroom for this child's branch");
+    }
+    const enrolledCount = await prisma.child.count({
+        where: { classroomId: payload.classroomId, status: "ENROLLED" },
+    });
+    if (enrolledCount >= classroom.legalCapacity) {
+        throw new AppError(status.CONFLICT, `${classroom.name} is at capacity (${classroom.legalCapacity}). Choose another classroom.`);
+    }
+    const teacherCount = classroom._count.teacherAssignments;
+    const prospectiveCount = enrolledCount + 1;
+    if (teacherCount === 0) {
+        throw new AppError(status.CONFLICT, `${classroom.name} has no teacher assigned. Assign a teacher before adding children.`);
+    }
+    if (prospectiveCount > teacherCount * classroom.ratioLimit) {
+        const teachersNeeded = Math.ceil(prospectiveCount / classroom.ratioLimit);
+        throw new AppError(status.CONFLICT, `${classroom.name} needs at least ${teachersNeeded} teacher(s) to legally hold ${prospectiveCount} children at a 1:${classroom.ratioLimit} ratio. Currently has ${teacherCount}.`);
+    }
+    return prisma.child.update({
+        where: { id },
+        data: { classroomId: payload.classroomId },
+    });
+};
+const unassignClassroom = async (id, tenantId, staffBranchId) => {
+    const child = await prisma.child.findUnique({ where: { id } });
+    if (!child || child.tenantId !== tenantId) {
+        throw new AppError(status.NOT_FOUND, "Child not found");
+    }
+    if (staffBranchId && child.branchId !== staffBranchId) {
+        throw new AppError(status.FORBIDDEN, "You do not have access to this branch");
+    }
+    if (!child.classroomId) {
+        throw new AppError(status.CONFLICT, "This child is not assigned to a classroom");
+    }
+    return prisma.child.update({
+        where: { id },
+        data: { classroomId: null },
+    });
+};
 const suspendChild = async (id, payload, tenantId, staffBranchId) => {
     const child = await prisma.child.findUnique({ where: { id } });
     if (!child || child.tenantId !== tenantId) {
@@ -234,10 +349,15 @@ export const ChildService = {
     applyForChild,
     getAllChildren,
     getChildById,
+    getMyChildById,
     approveChild,
     rejectChild,
     linkGuardian,
     suspendChild,
     reactivateChild,
     unlinkGuardian,
+    selfUnlinkGuardian,
+    updatePickupPermission,
+    assignClassroom,
+    unassignClassroom,
 };

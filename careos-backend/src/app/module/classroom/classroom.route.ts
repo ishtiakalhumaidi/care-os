@@ -28,6 +28,16 @@ router.get(
 );
 
 router.get(
+  "/mine",
+  checkAuth(Role.TEACHER),
+  ClassroomController.getMyClassrooms,
+);
+router.get(
+  "/mine/:id",
+  checkAuth(Role.TEACHER),
+  ClassroomController.getMyClassroomById,
+);
+router.get(
   "/:id",
   checkAuth(Role.TENANT_OWNER, Role.CENTER_ADMIN, Role.TEACHER),
   ClassroomController.getClassroomById,

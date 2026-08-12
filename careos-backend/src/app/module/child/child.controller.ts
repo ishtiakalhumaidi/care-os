@@ -126,25 +126,6 @@ const updatePickupPermission = catchAsync(async (req: Request, res: Response) =>
   });
 });
 
-const selfLinkGuardian = catchAsync(async (req: Request, res: Response) => {
-  const { id } = req.params;
-  const requesterId = req.user!.id;
-  const tenantId = req.user!.tenantId as string;
-
-  const result = await ChildService.selfLinkGuardian(
-    id as string,
-    requesterId,
-    tenantId,
-    req.body,
-  );
-
-  sendResponse(res, {
-    httpStatusCode: status.CREATED,
-    success: true,
-    message: "Guardian added successfully",
-    data: result,
-  });
-});
 
 const selfUnlinkGuardian = catchAsync(async (req: Request, res: Response) => {
   const { id, linkId } = req.params;
@@ -291,7 +272,42 @@ const reactivateChild = catchAsync(async (req: Request, res: Response) => {
     data: result,
   });
 });
+const assignClassroom = catchAsync(async (req: Request, res: Response) => {
+  const { id } = req.params;
+  const tenantId = req.user!.tenantId as string;
+  const staffBranchId = req.user!.role === "TENANT_OWNER" ? undefined : (req.user!.branchId as string);
 
+  const result = await ChildService.assignClassroom(id as string, req.body, tenantId, staffBranchId);
+
+  sendResponse(res, {
+    httpStatusCode: status.OK,
+    success: true,
+    message: "Classroom assigned successfully",
+    data: result,
+  });
+});
+
+const unassignClassroom = catchAsync(async (req: Request, res: Response) => {
+  const { id } = req.params;
+  const tenantId = req.user!.tenantId as string;
+  const staffBranchId =
+    req.user!.role === "TENANT_OWNER"
+      ? undefined
+      : (req.user!.branchId as string);
+
+  const result = await ChildService.unassignClassroom(
+    id as string,
+    tenantId,
+    staffBranchId,
+  );
+
+  sendResponse(res, {
+    httpStatusCode: status.OK,
+    success: true,
+    message: "Child removed from classroom",
+    data: result,
+  });
+});
 export const ChildController = {
   applyForChild,
   getAllChildren,
@@ -300,10 +316,11 @@ export const ChildController = {
   approveChild,
   rejectChild,
   linkGuardian,
-  selfLinkGuardian,
   suspendChild,
   reactivateChild,
   unlinkGuardian,
   selfUnlinkGuardian,
   updatePickupPermission,
+  assignClassroom,
+  unassignClassroom
 };

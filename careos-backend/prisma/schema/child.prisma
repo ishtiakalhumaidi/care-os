@@ -20,11 +20,11 @@ model Child {
   branchId String
   branch   Branch @relation(fields: [branchId], references: [id])
 
-  classroomId String?
-  classroom   Classroom? @relation(fields: [classroomId], references: [id])
-
-  approvedById String?
-  approvedBy   User?   @relation("ChildApprovedBy", fields: [approvedById], references: [id])
+  classroomId      String?
+  classroom        Classroom?        @relation(fields: [classroomId], references: [id])
+  guardianRequests GuardianRequest[]
+  approvedById     String?
+  approvedBy       User?             @relation("ChildApprovedBy", fields: [approvedById], references: [id])
 
   guardians      ChildGuardian[]
   attendance     Attendance[]

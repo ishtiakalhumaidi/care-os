@@ -29,12 +29,13 @@ model User {
   shifts     Shift[]
   timesheets Timesheet[]
 
-  uploadedMedia   Media[]
-  signedDocuments Document[]
-
-  sentMessages Message[]
+  uploadedMedia        Media[]
+  signedDocuments      Document[]
+  classroomAssignments ClassroomTeacher[] @relation("TeacherAssignments")
+  sentMessages         Message[]
 
   createdBroadcasts Broadcast[]
+  guardianRequests  GuardianRequest[]
 }
 
 model Session {

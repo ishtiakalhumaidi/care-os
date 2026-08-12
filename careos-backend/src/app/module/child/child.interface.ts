@@ -36,3 +36,7 @@ export interface ISelfLinkGuardianPayload {
   relationship: string;
   canPickup?: boolean;
 }
+
+export interface IAssignClassroomPayload {
+  classroomId: string;
+}
