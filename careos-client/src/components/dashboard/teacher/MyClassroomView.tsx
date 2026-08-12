@@ -2,78 +2,80 @@
 "use client";
 
 import React from "react";
+import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
-import { getMyClassroom } from "@/services/classroom.services";
-import { Loader2, School, Baby } from "lucide-react";
+import { getCurrentAttendance } from "@/services/attendance.services";
+import { getMyClassrooms, IClassroom } from "@/services/classroom.services";
+import { Loader2, School, ChevronRight, Users } from "lucide-react";
 
 export default function MyClassroomView() {
   const { data, isLoading } = useQuery({
-    queryKey: ["my-classroom"],
-    queryFn: getMyClassroom,
+    queryKey: ["my-classrooms"],
+    queryFn: getMyClassrooms,
   });
 
-  if (isLoading)
-    return (
-      <Loader2 className="mx-auto size-6 animate-spin text-muted-foreground" />
-    );
+  const { data: attendanceData } = useQuery({
+    queryKey: ["attendance", "current"],
+    queryFn: () => getCurrentAttendance(""),
+  });
 
-  const classroom = data?.data;
+  if (isLoading) {
+    return <Loader2 className="mx-auto size-6 animate-spin text-muted-foreground" />;
+  }
 
-  if (!classroom) {
+  const classrooms: IClassroom[] = data?.data || [];
+
+  const presentCountByClassroom = new Map<string, number>();
+  (attendanceData?.data || []).forEach((record: any) => {
+    const classroomId = record.child?.classroomId;
+    if (!classroomId) return;
+    presentCountByClassroom.set(classroomId, (presentCountByClassroom.get(classroomId) || 0) + 1);
+  });
+
+  if (classrooms.length === 0) {
     return (
       <div className="rounded-lg border border-dashed border-border py-16 text-center">
         <p className="text-sm text-muted-foreground">
-          You haven&apos;t been assigned to a classroom yet. Contact your center
-          admin.
+          You haven&apos;t been assigned to a classroom yet. Contact your center admin.
         </p>
       </div>
     );
   }
 
-  const enrolledCount = classroom._count?.children ?? 0;
-
   return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold text-foreground">{classroom.name}</h1>
-        <p className="mt-1 text-sm text-muted-foreground">
-          {classroom.ageGroup} · {classroom.branch?.name} · {enrolledCount}/
-          {classroom.legalCapacity} children · Ratio 1:{classroom.ratioLimit}
-        </p>
-      </div>
+    <div className="space-y-4">
+      {classrooms.map((classroom) => {
+        const enrolledCount = classroom._count?.children ?? 0;
+        const presentCount = presentCountByClassroom.get(classroom.id) ?? 0;
 
-      <div className="rounded-lg border border-border bg-card p-6">
-        <h3 className="mb-4 text-base font-semibold text-foreground">
-          My students
-        </h3>
-        {!classroom.children || classroom.children.length === 0 ? (
-          <p className="text-sm text-muted-foreground">
-            No children enrolled in this classroom yet.
-          </p>
-        ) : (
-          <ul className="divide-y divide-border">
-            {classroom.children.map((c: any) => (
-              <li key={c.id} className="flex items-center gap-3 py-3 text-sm">
-                {c.photoUrl ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img
-                    src={c.photoUrl}
-                    alt={c.firstName}
-                    className="size-9 rounded-full object-cover"
-                  />
-                ) : (
-                  <div className="flex size-9 items-center justify-center rounded-full bg-muted text-muted-foreground">
-                    <Baby className="size-4" />
-                  </div>
-                )}
-                <span className="font-medium text-foreground">
-                  {c.firstName} {c.lastName}
-                </span>
-              </li>
-            ))}
-          </ul>
-        )}
-      </div>
+        return (
+          <Link
+            key={classroom.id}
+            href={`/teacher/dashboard/my-classroom/${classroom.id}`}
+            className="flex items-center justify-between rounded-lg border border-border bg-card p-5 transition-colors hover:border-primary/40"
+          >
+            <div className="flex items-center gap-4">
+              <div className="flex size-10 items-center justify-center rounded-full bg-primary/10 text-primary">
+                <School className="size-5" />
+              </div>
+              <div>
+                <h2 className="text-base font-semibold text-foreground">{classroom.name}</h2>
+                <p className="mt-0.5 text-xs text-muted-foreground">
+                  {classroom.ageGroup} · {classroom.branch?.name} · {enrolledCount}/
+                  {classroom.legalCapacity} children · Ratio 1:{classroom.ratioLimit}
+                </p>
+              </div>
+            </div>
+            <div className="flex items-center gap-4">
+              <div className="flex items-center gap-1.5 rounded-md bg-primary/10 px-2.5 py-1 text-xs font-medium text-primary">
+                <Users className="size-3.5" />
+                {presentCount} present
+              </div>
+              <ChevronRight className="size-4 text-muted-foreground" />
+            </div>
+          </Link>
+        );
+      })}
     </div>
   );
 }

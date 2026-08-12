@@ -3,14 +3,14 @@ import {
   QueryClient,
   dehydrate,
 } from "@tanstack/react-query";
-import { getMyClassroom } from "@/services/classroom.services";
+import { getMyClassrooms } from "@/services/classroom.services";
 import MyClassroomView from "@/components/dashboard/teacher/MyClassroomView";
 
 export default async function MyClassroomPage() {
   const queryClient = new QueryClient();
   await queryClient.prefetchQuery({
-    queryKey: ["my-classroom"],
-    queryFn: getMyClassroom,
+    queryKey: ["my-classrooms"],
+    queryFn: getMyClassrooms,
     staleTime: 1000 * 60,
   });
 

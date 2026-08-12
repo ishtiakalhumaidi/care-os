@@ -1,3 +1,5 @@
+import DashboardLoading from "@/components/common/DashboardLoading";
+
 export default function MyProfileLoading() {
-  return <p className="text-muted-foreground">Loading My Profile...</p>;
+  return <DashboardLoading label="Loading your profile..." />;
 }

@@ -17,6 +17,7 @@ import {
   X,
   Layers,
   CreditCard,
+  UserCheck,
 } from "lucide-react";
 import { Logo } from "@/components/common/logo";
 import { useSidebar } from "../providers/SidebarContext";
@@ -34,47 +35,21 @@ const superAdminNavigation: NavItem[] = [
 
 const ownerNavigation: NavItem[] = [
   { name: "Dashboard", href: "/owner/dashboard", icon: LayoutDashboard },
-  {
-    name: "Branches",
-    href: "/owner/dashboard/branches-management",
-    icon: Building,
-  },
-  {
-    name: "Classrooms",
-    href: "/owner/dashboard/classrooms-management",
-    icon: School,
-  },
-  {
-    name: "Students",
-    href: "/owner/dashboard/students-management",
-    icon: Baby,
-  },
+  { name: "Branches", href: "/owner/dashboard/branches-management", icon: Building },
+  { name: "Classrooms", href: "/owner/dashboard/classrooms-management", icon: School },
+  { name: "Students", href: "/owner/dashboard/students-management", icon: Baby },
+  { name: "Guardian Requests", href: "/owner/dashboard/guardian-requests", icon: UserCheck },
   { name: "Team", href: "/owner/dashboard/team-management", icon: UserPlus },
-  {
-    name: "Billing & Plan",
-    href: "/owner/dashboard/billing",
-    icon: CreditCard,
-  },
+  { name: "Billing & Plan", href: "/owner/dashboard/billing", icon: CreditCard },
   { name: "Settings", href: "/owner/settings", icon: Settings },
 ];
 
 const centerAdminNavigation: NavItem[] = [
   { name: "Dashboard", href: "/center-admin/dashboard", icon: LayoutDashboard },
-  {
-    name: "Classrooms",
-    href: "/center-admin/dashboard/classrooms-management",
-    icon: School,
-  },
-  {
-    name: "Students",
-    href: "/center-admin/dashboard/students-management",
-    icon: Baby,
-  },
-  {
-    name: "Team",
-    href: "/center-admin/dashboard/team-management",
-    icon: UserPlus,
-  },
+  { name: "Classrooms", href: "/center-admin/dashboard/classrooms-management", icon: School },
+  { name: "Students", href: "/center-admin/dashboard/students-management", icon: Baby },
+  { name: "Guardian Requests", href: "/center-admin/dashboard/guardian-requests", icon: UserCheck },
+  { name: "Team", href: "/center-admin/dashboard/team-management", icon: UserPlus },
 ];
 
 const teacherNavigation: NavItem[] = [
@@ -206,7 +181,7 @@ export default function DashboardSidebar({ role }: { role?: string }) {
         <div className="flex h-16 shrink-0 items-center px-6 border-b border-border">
           <Link
             href="/"
-            className="relative z-10 w-fit rounded-lg outline-none [&_span]:text-background focus-visible:ring-2 focus-visible:ring-background/40"
+            className="relative z-10 w-fit rounded-lg outline-none  focus-visible:ring-2 focus-visible:ring-background/40"
           >
             <Logo />
           </Link>

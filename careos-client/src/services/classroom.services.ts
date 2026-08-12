@@ -3,6 +3,12 @@
 
 import { serverApi } from "@/lib/api-client";
 
+export interface IClassroomTeacherAssignment {
+  id: string;
+  isLead: boolean;
+  teacher: IClassroomTeacher;
+}
+
 export interface IClassroom {
   id: string;
   name: string;
@@ -11,9 +17,9 @@ export interface IClassroom {
   ratioLimit: number;
   branchId: string;
   branch?: { id: string; name: string };
-  users?: IClassroomTeacher[];
+  teacherAssignments?: IClassroomTeacherAssignment[];
   children?: IClassroomChildSummary[];
-  _count?: { children: number; users: number };
+  _count?: { children: number; teacherAssignments: number };
 }
 export interface IClassroomTeacher {
   id: string;
@@ -80,12 +86,21 @@ export const getClassroomById = async (id: string) => {
     );
   }
 };
-export const getMyClassroom = async () => {
+export const getMyClassrooms = async () => {
   try {
-    const meRes = await serverApi.get("/users/me");
-    const classroomId = meRes.data.data?.classroom?.id;
-    if (!classroomId) return null;
-    const response = await serverApi.get(`/classrooms/${classroomId}`);
+    const response = await serverApi.get("/classrooms/mine");
+    return response.data;
+  } catch (error: any) {
+    console.error("Backend Error:", error.response?.data || error.message);
+    throw new Error(
+      error.response?.data?.message || "Failed to fetch classrooms",
+    );
+  }
+};
+
+export const getMyClassroomById = async (id: string) => {
+  try {
+    const response = await serverApi.get(`/classrooms/mine/${id}`);
     return response.data;
   } catch (error: any) {
     console.error("Backend Error:", error.response?.data || error.message);

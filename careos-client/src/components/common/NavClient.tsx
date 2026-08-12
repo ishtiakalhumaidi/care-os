@@ -32,7 +32,7 @@ export function NavClient({ isLoggedIn, dashboardRoute }: NavClientProps) {
         <div className="flex items-center gap-4">
          <Link
           href="/"
-          className="relative z-10 w-fit rounded-lg outline-none [&_span]:text-background focus-visible:ring-2 focus-visible:ring-background/40"
+          className="relative z-10 w-fit rounded-lg outline-none  focus-visible:ring-2 focus-visible:ring-background/40"
         >
           <Logo />
         </Link>
@@ -54,15 +54,15 @@ export function NavClient({ isLoggedIn, dashboardRoute }: NavClientProps) {
 
               {/* Animated Desktop Logout Button */}
               <button
-                onClick={handleSignOut}
-                className="group flex h-10 items-center rounded-xl border border-input bg-background px-3 transition-all duration-300 ease-in-out hover:px-4 hover:bg-muted"
-                aria-label="Sign out"
-              >
-                <LogOut className="size-4 shrink-0 text-foreground transition-colors" />
-                <span className="max-w-0 overflow-hidden whitespace-nowrap text-sm font-medium text-foreground opacity-0 transition-all duration-300 ease-in-out group-hover:ml-2 group-hover:max-w-[100px] group-hover:opacity-100">
-                  Sign out
-                </span>
-              </button>
+  onClick={handleSignOut}
+  className="group flex h-10 items-center justify-center rounded-xl border border-input bg-background px-3 transition-colors duration-300 ease-in-out hover:border-destructive hover:bg-destructive"
+  aria-label="Sign out"
+>
+  <LogOut className="size-4 shrink-0 text-foreground transition-colors duration-300 ease-in-out group-hover:text-destructive-foreground" />
+  <span className="max-w-0 overflow-hidden whitespace-nowrap text-sm font-medium text-foreground opacity-0 transition-all duration-300 ease-in-out group-hover:ml-2 group-hover:max-w-[100px] group-hover:opacity-100 group-hover:text-destructive-foreground">
+    Sign out
+  </span>
+</button>
             </div>
           ) : (
             <div className="flex items-center gap-4">

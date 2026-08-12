@@ -4,14 +4,23 @@
 import React, { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { ArrowLeft, School, UserPlus, Baby, Plus, CheckCircle2, Circle, History } from "lucide-react";
+import { toast } from "sonner";
 import {
   getClassroomById,
   unassignTeacher,
   IClassroom,
 } from "@/services/classroom.services";
-import { ArrowLeft, School, UserPlus, Baby } from "lucide-react";
-import { toast } from "sonner";
+import {
+  assignClassroom,
+  getChildren,
+  unassignClassroom,
+} from "@/services/child.services";
+import { getCurrentAttendance } from "@/services/attendance.services"; // <-- New import
 import AssignTeacherModal from "./AssignTeacherModal";
+import AddChildToClassroomModal from "./AddChildToClassroomModal";
+import TeacherChildHistoryModal from "../teacher/TeacherChildHistoryModal";
+
 
 export default function ClassroomDetailView({
   classroomId,
@@ -24,13 +33,26 @@ export default function ClassroomDetailView({
 }) {
   const router = useRouter();
   const queryClient = useQueryClient();
+  
   const [isAssignOpen, setIsAssignOpen] = useState(false);
+  const [isAddChildOpen, setIsAddChildOpen] = useState(false);
+  const [viewingHistoryFor, setViewingHistoryFor] = useState<{id: string; firstName: string; lastName: string} | null>(null);
 
-  const { data, isLoading } = useQuery({
+  const { data: classroom, isLoading } = useQuery({
     queryKey: ["classrooms", classroomId],
-    queryFn: () =>
-      getClassroomById(classroomId).then((res) => res.data as IClassroom),
+    queryFn: () => getClassroomById(classroomId).then((res) => res.data as IClassroom),
   });
+
+  // Fetch current attendance for this specific classroom
+  const { data: attendanceData } = useQuery({
+    queryKey: ["attendance", "current", classroomId],
+    queryFn: () => getCurrentAttendance(`classroomId=${classroomId}`),
+    enabled: !!classroom,
+  });
+
+  const presentRecords = attendanceData?.data || [];
+  // Structural efficiency: O(1) lookup map for present children
+  const presentByChild = new Map(presentRecords.map((r: any) => [r.childId, r]));
 
   const { mutate: removeTeacher } = useMutation({
     mutationFn: (userId: string) => unassignTeacher(classroomId, userId),
@@ -41,11 +63,40 @@ export default function ClassroomDetailView({
     onError: (err: any) => toast.error(err.message),
   });
 
-  if (isLoading || !data) {
+  const { data: branchChildren, isLoading: isLoadingUnassigned } = useQuery({
+    queryKey: ["children", "branch-enrolled", classroom?.branchId],
+    queryFn: () => getChildren(`branchId=${classroom!.branchId}&status=ENROLLED&limit=200`),
+    enabled: isAddChildOpen && !!classroom,
+  });
+
+  const unassignedChildren = {
+    data: (branchChildren?.data || []).filter((c: any) => !c.classroomId),
+  };
+
+  const { mutate: addChild, isPending: isAddingChild } = useMutation({
+    mutationFn: (childId: string) => assignClassroom(childId, classroomId),
+    onSuccess: () => {
+      toast.success("Child added to classroom.");
+      queryClient.invalidateQueries({ queryKey: ["classrooms", classroomId] });
+      queryClient.invalidateQueries({ queryKey: ["children", "branch-enrolled", classroom?.branchId] });
+    },
+    onError: (err: any) => toast.error(err.message),
+  });
+
+  const { mutate: removeChild, isPending: isRemovingChild } = useMutation({
+    mutationFn: (childId: string) => unassignClassroom(childId),
+    onSuccess: () => {
+      toast.success("Child removed from classroom.");
+      queryClient.invalidateQueries({ queryKey: ["classrooms", classroomId] });
+      queryClient.invalidateQueries({ queryKey: ["children", "branch-enrolled", classroom?.branchId] });
+    },
+    onError: (err: any) => toast.error(err.message),
+  });
+
+  if (isLoading || !classroom) {
     return <p className="text-sm text-muted-foreground">Loading...</p>;
   }
 
-  const classroom = data;
   const enrolledCount = classroom._count?.children ?? 0;
   const isFull = enrolledCount >= classroom.legalCapacity;
 
@@ -58,118 +109,144 @@ export default function ClassroomDetailView({
         <ArrowLeft className="size-4" /> Back to classrooms
       </button>
 
+      {/* Classroom Stats Header */}
       <div className="rounded-lg border border-border bg-card p-6">
         <div className="flex items-center gap-4">
           <div className="flex size-14 items-center justify-center rounded-full bg-primary/10 text-primary">
             <School className="size-6" />
           </div>
           <div>
-            <h2 className="text-xl font-semibold text-foreground">
-              {classroom.name}
-            </h2>
+            <h2 className="text-xl font-semibold text-foreground">{classroom.name}</h2>
             <p className="text-sm text-muted-foreground">
               {classroom.ageGroup} · {classroom.branch?.name}
             </p>
           </div>
         </div>
-
-        <div className="mt-4 grid grid-cols-3 gap-4">
+        <div className="mt-4 grid grid-cols-3 gap-4 border-t border-border pt-4">
           <div>
             <p className="text-xs text-muted-foreground">Capacity</p>
-            <p
-              className={`text-sm font-medium ${isFull ? "text-destructive" : "text-foreground"}`}
-            >
-              {enrolledCount} / {classroom.legalCapacity}
-              {isFull && " (Full)"}
+            <p className={`text-sm font-medium ${isFull ? "text-destructive" : "text-foreground"}`}>
+              {enrolledCount} / {classroom.legalCapacity} {isFull && " (Full)"}
             </p>
           </div>
           <div>
             <p className="text-xs text-muted-foreground">Ratio limit</p>
-            <p className="text-sm font-medium text-foreground">
-              1 : {classroom.ratioLimit}
-            </p>
+            <p className="text-sm font-medium text-foreground">1 : {classroom.ratioLimit}</p>
           </div>
           <div>
             <p className="text-xs text-muted-foreground">Teachers assigned</p>
-            <p className="text-sm font-medium text-foreground">
-              {classroom._count?.users ?? 0}
-            </p>
+            <p className="text-sm font-medium text-foreground">{classroom._count?.teacherAssignments ?? 0}</p>
           </div>
         </div>
       </div>
 
-      <div className="rounded-lg border border-border bg-card p-6">
-        <div className="mb-4 flex items-center justify-between">
-          <h3 className="text-base font-semibold text-foreground">Teachers</h3>
-          <button
-            onClick={() => setIsAssignOpen(true)}
-            className="flex items-center gap-2 rounded-md bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground hover:bg-primary/90 transition-colors"
-          >
-            <UserPlus className="size-3.5" /> Assign Teacher
-          </button>
-        </div>
-        {!classroom.users || classroom.users.length === 0 ? (
-          <p className="text-sm text-muted-foreground">
-            No teacher assigned yet.
-          </p>
-        ) : (
-          <ul className="divide-y divide-border">
-            {classroom.users.map((u) => (
-              <li
-                key={u.id}
-                className="flex items-center justify-between py-3 text-sm"
-              >
-                <div>
-                  <p className="font-medium text-foreground">{u.name}</p>
-                  <p className="text-xs text-muted-foreground">{u.email}</p>
-                </div>
-                <button
-                  onClick={() => removeTeacher(u.id)}
-                  className="text-xs text-destructive hover:underline"
-                >
-                  Remove
-                </button>
-              </li>
-            ))}
-          </ul>
-        )}
-      </div>
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
+        {/* Enrolled Children (Takes 2 cols) */}
+        <div className="rounded-lg border border-border bg-card p-6 lg:col-span-2">
+          <div className="mb-4 flex items-center justify-between">
+            <h3 className="text-base font-semibold text-foreground">Enrolled children</h3>
+            <button
+              onClick={() => setIsAddChildOpen(true)}
+              disabled={isFull}
+              title={isFull ? "This classroom is at capacity" : undefined}
+              className="flex items-center gap-2 rounded-md bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground hover:bg-primary/90 transition-colors disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              <Plus className="size-3.5" /> Add Child
+            </button>
+          </div>
+          {!classroom.children || classroom.children.length === 0 ? (
+            <p className="text-sm text-muted-foreground">No children enrolled in this classroom yet.</p>
+          ) : (
+            <ul className="divide-y divide-border">
+              {classroom.children.map((c) => {
+                const isPresent = presentByChild.has(c.id);
 
-      <div className="rounded-lg border border-border bg-card p-6">
-        <h3 className="mb-4 text-base font-semibold text-foreground">
-          Enrolled children
-        </h3>
-        {!classroom.children || classroom.children.length === 0 ? (
-          <p className="text-sm text-muted-foreground">
-            No children enrolled in this classroom yet.
-          </p>
-        ) : (
-          <ul className="divide-y divide-border">
-            {classroom.children.map((c) => (
-              <li
-                key={c.id}
-                onClick={() => router.push(`${studentsBasePath}/${c.id}`)}
-                className="flex cursor-pointer items-center gap-3 py-3 text-sm hover:bg-muted/50 transition-colors"
-              >
-                {c.photoUrl ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img
-                    src={c.photoUrl}
-                    alt={c.firstName}
-                    className="size-8 rounded-full object-cover"
-                  />
-                ) : (
-                  <div className="flex size-8 items-center justify-center rounded-full bg-muted text-muted-foreground">
-                    <Baby className="size-4" />
+                return (
+                  <li
+                    key={c.id}
+                    onClick={() => router.push(`${studentsBasePath}/${c.id}`)}
+                    className="flex cursor-pointer flex-col gap-3 py-3 sm:flex-row sm:items-center sm:justify-between text-sm hover:bg-muted/50 transition-colors"
+                  >
+                    <div className="flex items-center gap-3">
+                      {c.photoUrl ? (
+                        <img src={c.photoUrl} alt={c.firstName} className="size-9 rounded-full object-cover" />
+                      ) : (
+                        <div className="flex size-9 items-center justify-center rounded-full bg-muted text-muted-foreground">
+                          <Baby className="size-4" />
+                        </div>
+                      )}
+                      <div>
+                        <span className="font-medium text-foreground">{c.firstName} {c.lastName}</span>
+                        <p className="flex items-center gap-1 text-xs text-muted-foreground mt-0.5">
+                          {isPresent ? (
+                            <><CheckCircle2 className="size-3 text-emerald-600 dark:text-emerald-400" /> Present</>
+                          ) : (
+                            <><Circle className="size-3" /> Not checked in</>
+                          )}
+                        </p>
+                      </div>
+                    </div>
+                    
+                    <div className="flex items-center gap-2 mt-2 sm:mt-0 ml-12 sm:ml-0">
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setViewingHistoryFor(c);
+                        }}
+                        className="flex items-center gap-1.5 rounded-md border border-border bg-background px-3 py-1.5 text-xs font-medium text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
+                      >
+                        <History className="size-3.5" /> History
+                      </button>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          removeChild(c.id);
+                        }}
+                        disabled={isRemovingChild}
+                        className="rounded-md border border-destructive/20 bg-destructive/10 px-3 py-1.5 text-xs font-medium text-destructive hover:bg-destructive/20 transition-colors disabled:opacity-50"
+                      >
+                        Remove
+                      </button>
+                    </div>
+                  </li>
+                );
+              })}
+            </ul>
+          )}
+        </div>
+
+        {/* Teachers Assigned (Takes 1 col) */}
+        <div className="rounded-lg border border-border bg-card p-6 h-fit">
+          <div className="mb-4 flex items-center justify-between">
+            <h3 className="text-base font-semibold text-foreground">Teachers</h3>
+            <button
+              onClick={() => setIsAssignOpen(true)}
+              className="flex items-center gap-2 rounded-md bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground hover:bg-primary/90 transition-colors"
+            >
+              <UserPlus className="size-3.5" /> Assign
+            </button>
+          </div>
+          {!classroom.teacherAssignments || classroom.teacherAssignments.length === 0 ? (
+            <p className="text-sm text-muted-foreground">No teacher assigned yet.</p>
+          ) : (
+            <ul className="divide-y divide-border">
+              {classroom.teacherAssignments.map((a) => (
+                <li key={a.id} className="flex items-center justify-between py-3 text-sm">
+                  <div>
+                    <p className="font-medium text-foreground">{a.teacher.name}</p>
+                    <p className="text-xs text-muted-foreground">{a.teacher.email}</p>
                   </div>
-                )}
-                <span className="font-medium text-foreground">
-                  {c.firstName} {c.lastName}
-                </span>
-              </li>
-            ))}
-          </ul>
-        )}
+                  <button
+                    onClick={() => removeTeacher(a.teacher.id)}
+                    className="text-xs text-destructive hover:underline"
+                  >
+                    Remove
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
       </div>
 
       <AssignTeacherModal
@@ -178,6 +255,24 @@ export default function ClassroomDetailView({
         classroomId={classroom.id}
         branchId={classroom.branchId}
       />
+      <AddChildToClassroomModal
+        isOpen={isAddChildOpen}
+        onClose={() => setIsAddChildOpen(false)}
+        unassignedChildren={unassignedChildren?.data || []}
+        isLoading={isLoadingUnassigned}
+        isSubmitting={isAddingChild}
+        onSelect={(childId) => {
+          addChild(childId);
+          setIsAddChildOpen(false);
+        }}
+      />
+      {viewingHistoryFor && (
+        <TeacherChildHistoryModal
+          childId={viewingHistoryFor.id}
+          childName={`${viewingHistoryFor.firstName} ${viewingHistoryFor.lastName}`}
+          onClose={() => setViewingHistoryFor(null)}
+        />
+      )}
     </div>
   );
 }

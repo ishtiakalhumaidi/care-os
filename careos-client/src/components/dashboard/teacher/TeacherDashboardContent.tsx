@@ -1,20 +1,29 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
 import React from "react";
 import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
-import { getMyClassroom } from "@/services/classroom.services";
+import { getMyClassrooms } from "@/services/classroom.services";
 import { Baby, Users, Gauge, ArrowRight } from "lucide-react";
 
 export default function TeacherDashboardContent() {
   const { data, isLoading } = useQuery({
-    queryKey: ["my-classroom"],
-    queryFn: getMyClassroom,
+    queryKey: ["my-classrooms"],
+    queryFn: getMyClassrooms,
   });
 
-  const classroom = data?.data;
-  const enrolledCount = classroom?._count?.children ?? 0;
-  const teacherCount = classroom?._count?.users ?? 0;
+  const classrooms = data?.data || [];
+  const hasClassrooms = classrooms.length > 0;
+
+  const totalEnrolled = classrooms.reduce(
+    (sum: number, c: any) => sum + (c._count?.children ?? 0),
+    0,
+  );
+  const totalCapacity = classrooms.reduce(
+    (sum: number, c: any) => sum + (c.legalCapacity ?? 0),
+    0,
+  );
 
   return (
     <div className="space-y-8">
@@ -23,13 +32,13 @@ export default function TeacherDashboardContent() {
           Teacher Dashboard
         </h2>
         <p className="mt-1 text-sm text-muted-foreground">
-          {classroom
-            ? `Overview of ${classroom.name}.`
+          {hasClassrooms
+            ? `You're assigned to ${classrooms.length} classroom${classrooms.length > 1 ? "s" : ""}.`
             : "You haven't been assigned to a classroom yet."}
         </p>
       </div>
 
-      {!isLoading && !classroom ? (
+      {!isLoading && !hasClassrooms ? (
         <div className="rounded-lg border border-dashed border-border py-16 text-center">
           <p className="text-sm text-muted-foreground">
             Contact your center admin to get assigned to a classroom.
@@ -49,7 +58,7 @@ export default function TeacherDashboardContent() {
               </dt>
               <dd className="ml-16 pb-1">
                 <p className="text-2xl font-semibold text-foreground">
-                  {isLoading ? "..." : enrolledCount}
+                  {isLoading ? "..." : totalEnrolled}
                 </p>
               </dd>
             </div>
@@ -60,14 +69,12 @@ export default function TeacherDashboardContent() {
                   <Gauge className="size-6 text-primary" aria-hidden="true" />
                 </div>
                 <p className="ml-16 truncate text-sm font-medium text-muted-foreground">
-                  Capacity
+                  Total Capacity
                 </p>
               </dt>
               <dd className="ml-16 pb-1">
                 <p className="text-2xl font-semibold text-foreground">
-                  {isLoading
-                    ? "..."
-                    : `${enrolledCount}/${classroom?.legalCapacity ?? 0}`}
+                  {isLoading ? "..." : `${totalEnrolled}/${totalCapacity}`}
                 </p>
               </dd>
             </div>
@@ -78,12 +85,12 @@ export default function TeacherDashboardContent() {
                   <Users className="size-6 text-primary" aria-hidden="true" />
                 </div>
                 <p className="ml-16 truncate text-sm font-medium text-muted-foreground">
-                  Ratio Limit
+                  Classrooms Assigned
                 </p>
               </dt>
               <dd className="ml-16 pb-1">
                 <p className="text-2xl font-semibold text-foreground">
-                  {isLoading ? "..." : `1:${classroom?.ratioLimit ?? 0}`}
+                  {isLoading ? "..." : classrooms.length}
                 </p>
               </dd>
             </div>
@@ -94,7 +101,7 @@ export default function TeacherDashboardContent() {
             className="flex items-center justify-between rounded-lg border border-border bg-card p-4 hover:bg-muted/50 transition-colors"
           >
             <span className="text-sm font-medium text-foreground">
-              View classroom roster
+              View classroom rosters
             </span>
             <ArrowRight className="size-4 text-muted-foreground" />
           </Link>

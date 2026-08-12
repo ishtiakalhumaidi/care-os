@@ -201,6 +201,28 @@ export const selfLinkGuardian = async (
     throw new Error(error.response?.data?.message || "Failed to add guardian");
   }
 };
+export const assignClassroom = async (childId: string, classroomId: string) => {
+  try {
+    const response = await serverApi.patch(`/children/${childId}/classroom`, { classroomId });
+    return response.data;
+  } catch (error: any) {
+    console.error("Backend Error:", error.response?.data || error.message);
+    throw new Error(error.response?.data?.message || "Failed to assign classroom");
+  }
+};
+
+export const unassignClassroom = async (childId: string) => {
+  try {
+    const response = await serverApi.patch(`/children/${childId}/classroom/remove`);
+    return response.data;
+  } catch (error: any) {
+    console.error("Backend Error:", error.response?.data || error.message);
+    throw new Error(
+      error.response?.data?.message || "Failed to remove child from classroom",
+    );
+  }
+};
+
 
 export const selfUnlinkGuardian = async (childId: string, linkId: string) => {
   try {

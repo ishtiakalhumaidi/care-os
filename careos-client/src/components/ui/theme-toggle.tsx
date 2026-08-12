@@ -16,8 +16,6 @@ function subscribe() {
   return () => {};
 }
 
-// Client-side always mounted; server snapshot always false.
-// No effect, no setState-in-effect — satisfies the linter entirely.
 function useMounted() {
   return React.useSyncExternalStore(
     subscribe,
@@ -26,46 +24,90 @@ function useMounted() {
   );
 }
 
-export function ModeToggle() {
+export function ModeToggle({ className }: { className?: string }) {
   const { theme, setTheme } = useTheme();
   const mounted = useMounted();
+  const [isOpen, setIsOpen] = React.useState(false);
 
   if (!mounted) {
     return (
-      <div className="h-12 w-[120px] animate-pulse rounded-full border border-slate-200 bg-slate-100 dark:border-zinc-700 dark:bg-zinc-800" />
+      <div className={className}>
+        <div className="hidden h-12 w-[120px] animate-pulse rounded-full border border-border bg-muted/50 md:block" />
+        <div className="block h-10 w-10 animate-pulse rounded-full border border-border bg-muted/50 md:hidden" />
+      </div>
     );
   }
 
-  const activeIndex = THEMES.findIndex((t) => t.mode === theme);
+  const activeTheme = theme || "system";
+  const activeIndex = THEMES.findIndex((t) => t.mode === activeTheme);
+  const ActiveIcon = THEMES[Math.max(activeIndex, 0)].Icon;
 
   return (
-    <div className="relative flex h-12 w-fit items-center rounded-full border border-slate-200 bg-slate-50 p-1 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
-      <motion.div
-        className="absolute z-0 rounded-full bg-white shadow-[0_2px_8px_rgba(0,0,0,0.08)] dark:bg-zinc-800 dark:shadow-[0_2px_8px_rgba(0,0,0,0.3)]"
-        layout
-        transition={{ type: "spring", stiffness: 400, damping: 30 }}
-        initial={false}
-        style={{ top: 4, bottom: 4, width: 40, left: 4 }}
-        animate={{ x: Math.max(activeIndex, 0) * 40 }}
-      />
+    <div className={className}>
+ 
+      <div className="relative hidden h-12 w-fit items-center rounded-full border border-border bg-muted/30 p-1 shadow-sm md:flex">
+        <motion.div
+          className="absolute z-0 rounded-full bg-background shadow-sm border border-border/50"
+          layout
+          transition={{ type: "spring", stiffness: 400, damping: 30 }}
+          initial={false}
+          style={{ top: 4, bottom: 4, width: 40, left: 4 }}
+          animate={{ x: Math.max(activeIndex, 0) * 40 }}
+        />
 
-      {THEMES.map(({ mode, Icon, activeColor }) => (
+        {THEMES.map(({ mode, Icon, activeColor }) => (
+          <button
+            key={mode}
+            type="button"
+            onClick={() => setTheme(mode)}
+            className={cn(
+              "relative z-10 flex h-10 w-10 items-center justify-center rounded-full transition-colors duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary",
+              activeTheme === mode
+                ? activeColor 
+                : "text-muted-foreground hover:text-foreground"
+            )}
+            aria-label={`${mode} mode`}
+            aria-pressed={activeTheme === mode}
+          >
+            <Icon className="h-4 w-4" strokeWidth={activeTheme === mode ? 2.5 : 2} />
+          </button>
+        ))}
+      </div>
+
+    
+      <div className="relative md:hidden">
         <button
-          key={mode}
-          type="button"
-          onClick={() => setTheme(mode)}
-          className={cn(
-            "relative z-10 flex h-10 w-10 items-center justify-center rounded-full transition-colors duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary",
-            theme === mode
-              ? activeColor
-              : "text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-300"
-          )}
-          aria-label={`${mode} mode`}
-          aria-pressed={theme === mode}
+          onClick={() => setIsOpen(!isOpen)}
+          onBlur={() => setTimeout(() => setIsOpen(false), 200)}
+          className="flex h-10 w-10 items-center justify-center rounded-full border border-border bg-muted/30 text-foreground transition-colors hover:bg-muted/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+          aria-label="Toggle theme menu"
         >
-          <Icon className="h-4 w-4" strokeWidth={theme === mode ? 2.5 : 2} />
+          <ActiveIcon className="h-4 w-4" strokeWidth={2} />
         </button>
-      ))}
+
+        {isOpen && (
+          <div className="absolute right-0 top-12 z-50 flex w-12 flex-col gap-1 rounded-full border border-border bg-background p-1 shadow-lg">
+            {THEMES.map(({ mode, Icon, activeColor }) => (
+              <button
+                key={mode}
+                onClick={() => {
+                  setTheme(mode);
+                  setIsOpen(false);
+                }}
+                className={cn(
+                  "flex h-10 w-10 items-center justify-center rounded-full transition-colors",
+                  activeTheme === mode
+                    ? cn("bg-muted", activeColor) // <-- Applies text-secondary to the Monitor in mobile dropdown
+                    : "text-muted-foreground hover:bg-muted hover:text-foreground"
+                )}
+                aria-label={`${mode} mode`}
+              >
+                <Icon className="h-4 w-4" strokeWidth={activeTheme === mode ? 2.5 : 2} />
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
     </div>
   );
 }

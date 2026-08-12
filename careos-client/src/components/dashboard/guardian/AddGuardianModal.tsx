@@ -4,7 +4,7 @@ import React, { useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { X, Loader2 } from "lucide-react";
-import { selfLinkGuardian } from "@/services/child.services";
+import { requestGuardian } from "@/services/guardianRequest.services";
 import { getApiErrorMessage } from "@/lib/errorUtils";
 
 export default function AddGuardianModal({
@@ -20,9 +20,9 @@ export default function AddGuardianModal({
   const queryClient = useQueryClient();
 
   const mutation = useMutation({
-    mutationFn: () => selfLinkGuardian(childId, { email, relationship, canPickup }),
+    mutationFn: () => requestGuardian(childId, { email, relationship, canPickup }),
     onSuccess: () => {
-      toast.success("Guardian added");
+      toast.success("Request sent. Staff will review it before this person is added.");
       queryClient.invalidateQueries({ queryKey: ["my-child", childId] });
       onClose();
     },
@@ -33,11 +33,16 @@ export default function AddGuardianModal({
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
       <div className="w-full max-w-md rounded-lg border border-border bg-card p-6">
         <div className="flex items-center justify-between">
-          <h3 className="text-base font-semibold text-foreground">Add a guardian</h3>
+          <h3 className="text-base font-semibold text-foreground">Request a new guardian</h3>
           <button onClick={onClose} className="text-muted-foreground hover:text-foreground">
             <X className="size-4" />
           </button>
         </div>
+
+        <p className="mt-2 text-xs text-muted-foreground">
+          This person doesn&apos;t need an existing account. Staff will review your
+          request and send them an invitation directly.
+        </p>
 
         <form
           onSubmit={(e) => {
@@ -55,7 +60,6 @@ export default function AddGuardianModal({
               required
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              placeholder="they must already have a CareOS account"
               className="mt-1 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
             />
           </div>
@@ -88,7 +92,7 @@ export default function AddGuardianModal({
             className="flex w-full items-center justify-center gap-2 rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:opacity-90 disabled:opacity-60"
           >
             {mutation.isPending && <Loader2 className="size-4 animate-spin" />}
-            Add guardian
+            Send request
           </button>
         </form>
       </div>
