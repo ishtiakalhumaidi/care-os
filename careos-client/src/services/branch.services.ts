@@ -54,6 +54,15 @@ export interface IBranch {
   updatedAt?: string;
 }
 
+export const getLiveRatioMetrics = async (branchId: string) => {
+  try {
+    const response = await serverApi.get(`/branches/${branchId}/live-ratio`);
+    return response.data;
+  } catch (error: any) {
+    throw new Error(error.response?.data?.message || "Failed to fetch live ratio");
+  }
+};
+
 export const createBranch = async (payload: ICreateBranchPayload) => {
   try {
     const response = await serverApi.post("/branches", payload);

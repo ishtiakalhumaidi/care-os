@@ -6,7 +6,9 @@ import { useRouter } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import { getBranchById } from "@/services/branch.services";
 import { ArrowLeft, Building, School, Users } from "lucide-react";
-import BranchActivityAuditStream from "../timeline/BranchActivityAuditStream"; // <-- Added Import
+import BranchActivityAuditStream from "../timeline/BranchActivityAuditStream";
+import LiveRatioDashboard from "./LiveRatioDashboard"; 
+import BranchWeeklySchedule from "../schedule/BranchWeeklySchedule";
 
 export default function BranchDetailView({
   branchId,
@@ -53,10 +55,12 @@ export default function BranchDetailView({
         </div>
       </div>
 
-      {/* Main Content Grid */}
+
+      <div className="pt-2 pb-2">
+        <LiveRatioDashboard branchId={branchId} />
+      </div>
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
         
-        {/* Left Column: Classrooms (Takes up 2 columns) */}
         <div className="lg:col-span-2 space-y-6">
           <div className="rounded-lg border border-border bg-card p-6 shadow-sm h-fit">
             <div className="mb-4 flex items-center justify-between border-b border-border pb-4">
@@ -109,11 +113,14 @@ export default function BranchDetailView({
           </div>
         </div>
 
-     
         <div className="lg:col-span-1">
           <BranchActivityAuditStream branchId={branchId} />
         </div>
         
+      </div>
+      <div className="mt-8 pt-6 border-t border-border">
+        <h2 className="text-lg font-semibold text-foreground mb-4">Staff Scheduling</h2>
+        <BranchWeeklySchedule branchId={branchId} />
       </div>
     </div>
   );
