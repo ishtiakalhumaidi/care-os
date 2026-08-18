@@ -19,7 +19,7 @@ Check your email or GitHub notifications for the repository invite and accept it
 
 ### 2. Clone the repository
 ```bash
-https://github.com/ishtiakalhumaidi/care-OS.git
+git clone https://github.com/ishtiakalhumaidi/care-OS.git
 cd care-OS
 ```
 
