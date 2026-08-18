@@ -52,11 +52,11 @@ export default function ChildDetailView({
     queryFn: () => getChildById(childId).then((res) => res.data as IChild),
   });
 
-  // Pull history for the status header
   const { data: attendanceHistory } = useQuery({
     queryKey: ["attendance", "history", childId],
     queryFn: () => getChildAttendanceHistory(childId).then((res) => res.data),
     enabled: !!child && child.status === "ENROLLED",
+    refetchInterval: 15000,
   });
 
   const { mutate: removeGuardian } = useMutation({

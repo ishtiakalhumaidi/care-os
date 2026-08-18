@@ -5,9 +5,22 @@ import { sendResponse } from "../../shared/sendResponse.js";
 import { BranchService } from "./branch.service.js";
 import { IQuery } from "../../interfaces/query.interface.js";
 
+const getLiveRatio = catchAsync(async (req, res) => {
+  const { branchId } = req.params;
+  const tenantId = req.user!.tenantId as string;
+  
+  const result = await BranchService.getLiveRatio(branchId as string, tenantId as string);
+  
+  sendResponse(res, {
+    httpStatusCode: status.OK,
+    success: true,
+    message: "Live ratio metrics fetched successfully",
+    data: result,
+  });
+});
+
 const createBranch = catchAsync(async (req: Request, res: Response) => {
   const payload = req.body;
-  // Trust boundary secured: Inject server-side context directly
   payload.tenantId = req.user!.tenantId; 
 
   const result = await BranchService.createBranch(payload);
@@ -74,6 +87,7 @@ const deleteBranch = catchAsync(async (req: Request, res: Response) => {
 });
 
 export const BranchController = {
+  getLiveRatio,
   createBranch,
   getAllBranches,
   getBranchById,

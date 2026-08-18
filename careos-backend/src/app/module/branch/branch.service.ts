@@ -14,6 +14,72 @@ import type { Prisma, Branch } from "../../../generated/prisma/client.js";
 import type { IQuery } from "../../interfaces/query.interface.js";
 import { QueryBuilder } from "../../builder/QueryBuilder.js";
 
+const getLiveRatio = async (branchId: string, tenantId: string) => {
+  const branch = await prisma.branch.findUnique({ where: { id: branchId } });
+  if (!branch || branch.tenantId !== tenantId) {
+    throw new AppError(status.NOT_FOUND, "Branch not found or unauthorized");
+  }
+
+  const classrooms = await prisma.classroom.findMany({
+    where: { branchId },
+    select: {
+      id: true,
+      name: true,
+      legalCapacity: true,
+      ratioLimit: true,
+      _count: { select: { teacherAssignments: true } },
+    }
+  });
+
+  const activeAttendances = await prisma.attendance.findMany({
+    where: {
+      child: { branchId },
+      status: { in: ["CHECKED_IN", "PENDING_CHECKOUT"] }
+    },
+    select: {
+      child: { select: { classroomId: true } }
+    }
+  });
+
+  const attendanceCountByClassroom = new Map<string, number>();
+  activeAttendances.forEach(record => {
+    const cId = record.child?.classroomId;
+    if (cId) {
+      attendanceCountByClassroom.set(cId, (attendanceCountByClassroom.get(cId) || 0) + 1);
+    }
+  });
+
+  return classrooms.map(c => {
+    const presentChildren = attendanceCountByClassroom.get(c.id) || 0;
+    
+    const teacherCount = c._count.teacherAssignments; 
+    
+    let state = "OK";
+    const maxChildrenForTeachers = teacherCount * c.ratioLimit;
+    
+    if (teacherCount === 0 && presentChildren > 0) {
+      state = "VIOLATION"; 
+    } else if (presentChildren > maxChildrenForTeachers || presentChildren > c.legalCapacity) {
+      state = "VIOLATION"; 
+    } else if (presentChildren >= maxChildrenForTeachers - 1 || presentChildren >= c.legalCapacity - 1) {
+      state = "WARNING"; 
+    }
+
+    const currentRatio = teacherCount > 0 ? (presentChildren / teacherCount).toFixed(1) : presentChildren;
+
+    return {
+      classroomId: c.id,
+      name: c.name,
+      legalCapacity: c.legalCapacity,
+      ratioLimit: c.ratioLimit,
+      teacherCount,
+      presentChildren,
+      currentRatio,
+      state
+    };
+  });
+};
+
 const createBranch = async (payload: ICreateBranchPayload) => {
   const isTenantExist = await prisma.tenant.findUnique({
     where: { id: payload.tenantId },
@@ -144,6 +210,7 @@ const deleteBranch = async (id: string, tenantId?: string) => {
 };
 
 export const BranchService = {
+  getLiveRatio,
   createBranch,
   getAllBranches,
   getBranchById,
