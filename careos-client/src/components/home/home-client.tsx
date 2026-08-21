@@ -1,25 +1,25 @@
-'use client';
+"use client";
 
 import Link from "next/link";
-import { ArrowRight, Terminal } from "lucide-react";
-import { motion } from "framer-motion";
+import { ArrowRight, Terminal, Activity, CalendarClock, Users } from "lucide-react";
+import { motion, Variants } from "framer-motion"; // <-- Added Variants import
 
 const features = [
-  "Core Architecture Live",
+  "Touchless Check-In",
+  "Live Ratio Matrix",
+  "Staff Scheduling",
+  "Timeline Feed",
   "Role-Based Routing",
-  "Tenant Management",
-  "Live Ratios (Alpha)",
-  "Staff Allocation",
-  "Entity Schemas",
+  "Tenant Isolation",
 ];
 
 const stats = [
-  { value: "v0.3.0", label: "Current Build" },
-  { value: "Active", label: "Dev Environment" },
-  { value: "30%", label: "Systems Online" },
+  { value: "v0.5.0", label: "Mid-Way Build" },
+  { value: "Sprint 2", label: "Current Phase" },
+  { value: "60%", label: "Systems Online" },
 ];
 
-const containerVariants = {
+const containerVariants: Variants = {
   hidden: { opacity: 0 },
   visible: {
     opacity: 1,
@@ -27,7 +27,7 @@ const containerVariants = {
   },
 };
 
-const cardVariants = {
+const cardVariants: Variants = { // <-- Added Variants type
   hidden: { opacity: 0, y: 25, scale: 0.95 },
   visible: {
     opacity: 1,
@@ -53,13 +53,16 @@ export default function HomeClient() {
           whileTap={{ scale: 0.98 }}
           className="group relative flex flex-col items-start justify-center overflow-hidden rounded-[2rem] border border-border/50 bg-card/20 p-8 shadow-2xl shadow-primary/5 backdrop-blur-md transition-shadow hover:border-primary/40 hover:shadow-primary/10 md:col-span-12 lg:col-span-8 lg:p-12"
         >
+          {/* Subtle Background Gradient for Hero */}
+          <div className="absolute -right-20 -top-20 -z-10 h-64 w-64 rounded-full bg-primary/10 blur-3xl" />
+          
           <div className="mb-8">
             <span className="inline-flex items-center gap-2 rounded-full border border-border/80 bg-background/50 px-4 py-1.5 font-mono text-[11px] uppercase tracking-widest text-muted-foreground backdrop-blur-md">
               <span className="relative flex h-2 w-2">
                 <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-500 opacity-75"></span>
                 <span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-500"></span>
               </span>
-              Core Systems Online
+              Sprint 2: Operations Live
             </span>
           </div>
           <h1 className="text-balance font-display text-5xl font-extrabold leading-[0.95] tracking-tight text-foreground sm:text-6xl lg:text-7xl">
@@ -67,7 +70,7 @@ export default function HomeClient() {
             <span className="text-primary/90">for Modern Childcare.</span>
           </h1>
           <p className="mt-6 max-w-xl text-balance font-body text-base leading-relaxed text-muted-foreground sm:text-lg">
-            Phase 1 of the architecture is live. Test the core routing, tenant isolation, and centralized center operations in our early-access sandbox.
+            The architectural foundation is set. Core center operations, real-time ratio monitoring, and intelligent staff scheduling are now online and ready for testing.
           </p>
         </motion.div>
 
@@ -81,7 +84,7 @@ export default function HomeClient() {
           <div className="mb-8 w-full space-y-2 text-center lg:text-left">
             <h3 className="font-display text-2xl font-semibold text-foreground">Access the Build.</h3>
             <p className="text-sm text-muted-foreground">
-              The dashboard is currently live for early iteration testing.
+              Sign in to explore the newly deployed scheduling and attendance matrices.
             </p>
           </div>
           <div className="flex w-full flex-col items-center gap-4">
@@ -127,12 +130,12 @@ export default function HomeClient() {
                 <div className="flex flex-1 flex-col gap-4">
                   <div className="flex h-24 gap-4">
                     <div className="flex-1 space-y-2 rounded-xl border border-border/50 bg-card p-4">
-                      <div className="h-4 w-1/3 rounded bg-muted" />
+                      <div className="h-4 w-1/3 rounded bg-muted flex items-center gap-2"><Activity className="size-3"/> Live Data</div>
                       <div className="h-8 w-1/2 rounded bg-foreground/10" />
                     </div>
                     <div className="relative flex-1 space-y-2 overflow-hidden rounded-xl border border-secondary/30 bg-secondary/5 p-4">
                       <div className="absolute right-0 top-0 h-full w-1 animate-pulse bg-secondary" />
-                      <div className="h-4 w-1/2 rounded bg-secondary/60" />
+                      <div className="h-4 w-1/2 rounded bg-secondary/60 flex items-center gap-2"><Users className="size-3"/> Ratios</div>
                       <div className="h-8 w-1/3 rounded bg-secondary/80" />
                     </div>
                   </div>
@@ -141,7 +144,7 @@ export default function HomeClient() {
               <div className="absolute inset-0 flex flex-col items-center justify-center bg-background/40 backdrop-blur-[2px]">
                 <div className="flex items-center gap-2 rounded-full border border-border/80 bg-card/90 px-6 py-3 font-mono text-sm text-foreground shadow-xl backdrop-blur-xl">
                   <Terminal className="size-4 text-emerald-500" />
-                  Live Testing Environment
+                  Command Center Online
                 </div>
               </div>
             </div>
@@ -157,7 +160,7 @@ export default function HomeClient() {
             whileTap={{ scale: 0.98 }}
             className="flex flex-1 flex-col justify-center rounded-[2rem] border border-border/50 bg-card/20 p-8 shadow-2xl shadow-primary/5 backdrop-blur-md transition-shadow hover:border-primary/40"
           >
-            <h4 className="mb-6 font-mono text-xs uppercase tracking-widest text-muted-foreground">System Modules</h4>
+            <h4 className="mb-6 font-mono text-xs uppercase tracking-widest text-muted-foreground">Active Modules</h4>
             <div className="flex flex-wrap gap-2">
               {features.map((feature) => (
                 <motion.span
@@ -195,7 +198,7 @@ export default function HomeClient() {
       </motion.div>
 
       <p className="mt-12 text-center font-mono text-xs text-muted-foreground/60">
-        Engineered for scale. Expect breaking changes during early access.
+        Engineered for scale. Documenting all structural decisions in real-time.
       </p>
     </main>
   );

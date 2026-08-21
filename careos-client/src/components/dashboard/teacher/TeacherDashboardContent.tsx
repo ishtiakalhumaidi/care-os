@@ -6,7 +6,8 @@ import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
 import { getMyClassrooms } from "@/services/classroom.services";
 import { Baby, Users, Gauge, ArrowRight } from "lucide-react";
-import TeacherUpcomingShifts from "../schedule/TeacherUpcomingShifts"; // Adjust path if needed
+import TeacherUpcomingShifts from "../schedule/TeacherUpcomingShifts";
+import TeacherTimesheetWidget from "../schedule/TeacherTimesheetWidget"; 
 
 export default function TeacherDashboardContent() {
   const { data, isLoading } = useQuery({
@@ -116,7 +117,9 @@ export default function TeacherDashboardContent() {
           )}
         </div>
 
-        <div className="lg:col-span-1">
+        {/* Right Column: Timesheet & Upcoming Shifts (Takes up 1/3 width) */}
+        <div className="lg:col-span-1 space-y-6">
+          <TeacherTimesheetWidget />
           <TeacherUpcomingShifts />
         </div>
 
