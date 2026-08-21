@@ -28,3 +28,39 @@ export const getMyUpcomingShifts = async () => {
     throw new Error(error.response?.data?.message || "Failed to fetch your shifts");
   }
 };
+
+export const clockIn = async (shiftId?: string) => {
+  try {
+    const response = await serverApi.post(`/schedules/timesheet/clock-in`, { shiftId });
+    return response.data;
+  } catch (error: any) {
+    throw new Error(error.response?.data?.message || "Failed to clock in");
+  }
+};
+
+export const clockOut = async () => {
+  try {
+    const response = await serverApi.post(`/schedules/timesheet/clock-out`);
+    return response.data;
+  } catch (error: any) {
+    throw new Error(error.response?.data?.message || "Failed to clock out");
+  }
+};
+
+export const getCurrentTimesheet = async () => {
+  try {
+    const response = await serverApi.get(`/schedules/timesheet/current`);
+    return response.data;
+  } catch (error: any) {
+    throw new Error(error.response?.data?.message || "Failed to fetch timesheet status");
+  }
+};
+
+export const getMyTimesheetHistory = async () => {
+  try {
+    const response = await serverApi.get(`/schedules/timesheet/history`);
+    return response.data;
+  } catch (error: any) {
+    throw new Error(error.response?.data?.message || "Failed to fetch timesheet history");
+  }
+};

@@ -14,6 +14,29 @@ router.post(
   ScheduleController.createShift
 );
 
+router.post(
+  "/timesheet/clock-in",
+  checkAuth(Role.TEACHER, Role.CENTER_ADMIN),
+  ScheduleController.clockIn
+);
+
+router.post(
+  "/timesheet/clock-out",
+  checkAuth(Role.TEACHER, Role.CENTER_ADMIN),
+  ScheduleController.clockOut
+);
+
+router.get(
+  "/timesheet/current",
+  checkAuth(Role.TEACHER, Role.CENTER_ADMIN),
+  ScheduleController.getCurrentTimesheet
+);
+router.get(
+  "/timesheet/history",
+  checkAuth(Role.TEACHER, Role.CENTER_ADMIN),
+  ScheduleController.getMyTimesheetHistory
+);
+
 router.get(
   "/branch/:branchId/weekly",
   checkAuth(Role.TENANT_OWNER, Role.CENTER_ADMIN, Role.TEACHER),

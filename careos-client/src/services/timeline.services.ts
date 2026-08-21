@@ -70,3 +70,13 @@ export const getBranchAuditStream = async (branchId: string, date?: string) => {
     throw new Error(error.response?.data?.message || "Failed to fetch audit stream");
   }
 };
+
+export const getChildDailyTimeline = async (childId: string, date?: string) => {
+  try {
+    const query = date ? `?date=${date}` : "";
+    const response = await serverApi.get(`/timeline/${childId}/events${query}`);
+    return response.data;
+  } catch (error: any) {
+    throw new Error(error.response?.data?.message || "Failed to fetch timeline");
+  }
+};
