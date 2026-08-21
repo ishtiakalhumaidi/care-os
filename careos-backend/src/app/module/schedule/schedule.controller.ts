@@ -53,8 +53,59 @@ const getMyUpcomingShifts = catchAsync(async (req: Request, res: Response) => {
   });
 });
 
+const clockIn = catchAsync(async (req: Request, res: Response) => {
+  const userId = req.user!.id;
+  const role = req.user!.role;
+  const branchId = req.user!.branchId;
+
+  const result = await ScheduleService.clockIn(userId, role, branchId, req.body.shiftId);
+  
+  sendResponse(res, {
+    httpStatusCode: status.OK,
+    success: true,
+    message: "Clocked in successfully",
+    data: result,
+  });
+});
+
+const clockOut = catchAsync(async (req: Request, res: Response) => {
+  const userId = req.user!.id;
+  const result = await ScheduleService.clockOut(userId);
+  sendResponse(res, {
+    httpStatusCode: status.OK,
+    success: true,
+    message: "Clocked out successfully",
+    data: result,
+  });
+});
+
+const getCurrentTimesheet = catchAsync(async (req: Request, res: Response) => {
+  const userId = req.user!.id;
+  const result = await ScheduleService.getCurrentTimesheet(userId);
+  sendResponse(res, {
+    httpStatusCode: status.OK,
+    success: true,
+    message: "Current timesheet fetched",
+    data: result, 
+  });
+});
+
+const getMyTimesheetHistory = catchAsync(async (req: Request, res: Response) => {
+  const userId = req.user!.id;
+  const result = await ScheduleService.getMyTimesheetHistory(userId);
+  sendResponse(res, {
+    httpStatusCode: status.OK,
+    success: true,
+    message: "Timesheet history fetched",
+    data: result,
+  });
+});
 export const ScheduleController = {
   createShift,
   getBranchWeeklySchedule,
   getMyUpcomingShifts,
+  clockIn,
+  clockOut,
+  getCurrentTimesheet,
+  getMyTimesheetHistory,
 };

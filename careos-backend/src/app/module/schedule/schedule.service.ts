@@ -73,8 +73,84 @@ const getMyUpcomingShifts = async (userId: string) => {
   });
 };
 
+const clockIn = async (userId: string, role: string, branchId: string | null, shiftId?: string) => {
+  const activeTimesheet = await prisma.timesheet.findFirst({
+    where: { userId, clockOutTime: null },
+  });
+
+  if (activeTimesheet) {
+    throw new AppError(status.CONFLICT, "You are already clocked in");
+  }
+
+  if (role === "TEACHER" && branchId) {
+    const branch = await prisma.branch.findUnique({ where: { id: branchId } });
+    
+    if (branch && branch.openTime && branch.closeTime) {
+      const now = new Date();
+      const currentHHMM = now.toLocaleTimeString('en-US', { hour12: false, hour: '2-digit', minute: '2-digit' });
+
+      if (currentHHMM < branch.openTime || currentHHMM > branch.closeTime) {
+        throw new AppError(
+          status.FORBIDDEN, 
+          `The branch is currently closed (Hours: ${branch.openTime} - ${branch.closeTime}). Only Admins can clock in for overtime.`
+        );
+      }
+    }
+  }
+
+  if (shiftId) {
+    const shift = await prisma.shift.findUnique({ where: { id: shiftId } });
+    if (!shift || shift.userId !== userId) {
+      throw new AppError(status.BAD_REQUEST, "Invalid shift selected");
+    }
+  }
+
+  return prisma.timesheet.create({
+    data: {
+      userId,
+      shiftId,
+      clockInTime: new Date(),
+    },
+  });
+};
+
+const clockOut = async (userId: string) => {
+  const activeTimesheet = await prisma.timesheet.findFirst({
+    where: { userId, clockOutTime: null },
+  });
+
+  if (!activeTimesheet) {
+    throw new AppError(status.CONFLICT, "You are not currently clocked in");
+  }
+
+  return prisma.timesheet.update({
+    where: { id: activeTimesheet.id },
+    data: { clockOutTime: new Date() },
+  });
+};
+
+const getCurrentTimesheet = async (userId: string) => {
+  return prisma.timesheet.findFirst({
+    where: { userId, clockOutTime: null },
+    include: { shift: { include: { classroom: { select: { name: true } } } } },
+  });
+};
+
+const getMyTimesheetHistory = async (userId: string, limit: number = 30) => {
+  return prisma.timesheet.findMany({
+    where: { userId },
+    orderBy: { clockInTime: "desc" },
+    take: limit,
+    include: { shift: { include: { classroom: { select: { name: true } } } } },
+  });
+};
+
 export const ScheduleService = {
   createShift,
   getBranchWeeklySchedule,
   getMyUpcomingShifts,
+  clockIn,
+  clockOut,
+  getCurrentTimesheet,
+  getMyTimesheetHistory,
 };
