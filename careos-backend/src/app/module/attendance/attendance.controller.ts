@@ -19,7 +19,13 @@ const requestCheckIn = catchAsync(async (req: Request, res: Response) => {
 
 const confirmCheckIn = catchAsync(async (req: Request, res: Response) => {
   const { attendanceId } = req.params;
-  const result = await AttendanceService.confirmCheckIn(attendanceId as string, performerFromReq(req));
+  const { offlineTime } = req.body; 
+  
+  const result = await AttendanceService.confirmCheckIn(
+    attendanceId as string, 
+    performerFromReq(req), 
+    offlineTime
+  );
   sendResponse(res, { httpStatusCode: status.OK, success: true, message: "Check-in confirmed", data: result });
 });
 
@@ -35,10 +41,13 @@ const requestCheckOut = catchAsync(async (req: Request, res: Response) => {
 
 const confirmCheckOut = catchAsync(async (req: Request, res: Response) => {
   const { attendanceId } = req.params;
+  const { pickedUpByGuardianId, offlineTime } = req.body; 
+  
   const result = await AttendanceService.confirmCheckOut(
     attendanceId as string,
     performerFromReq(req),
-    req.body.pickedUpByGuardianId,
+    pickedUpByGuardianId,
+    offlineTime
   );
   sendResponse(res, { httpStatusCode: status.OK, success: true, message: "Check-out confirmed", data: result });
 });
