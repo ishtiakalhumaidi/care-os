@@ -26,6 +26,11 @@ router.get(
   BranchController.getBranchById,
 );
 
+router.get(
+  "/:branchId/live-ratio",
+  checkAuth(Role.TENANT_OWNER, Role.CENTER_ADMIN),
+  BranchController.getLiveRatio
+);
 router.patch(
   "/:id",
   checkAuth(Role.TENANT_OWNER),

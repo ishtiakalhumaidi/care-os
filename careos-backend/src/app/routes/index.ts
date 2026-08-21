@@ -8,6 +8,8 @@ import { UserRoutes } from "../module/user/user.route.js";
 import { PlanRoutes } from "../module/plan/plan.route.js";
 import { GuardianRequestRoutes } from "../module/guardianRequest/guardianRequest.route.js";
 import { AttendanceRoutes } from "../module/attendance/attendance.route.js";
+import { TimelineRoutes } from "../module/timeline/timeline.route.js";
+import { ScheduleRoutes } from "../module/schedule/schedule.route.js";
 
 const router = Router();
 
@@ -20,5 +22,7 @@ router.use("/children", ChildRoutes);
 router.use("/plans", PlanRoutes);
 router.use("/guardian-requests", GuardianRequestRoutes);
 router.use("/attendance", AttendanceRoutes);
+router.use("/timeline", TimelineRoutes);
+router.use("/schedules", ScheduleRoutes);
 
 export const IndexRoutes = router;

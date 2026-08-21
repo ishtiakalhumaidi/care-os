@@ -4,7 +4,7 @@
 import React, { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { ArrowLeft, School, UserPlus, Baby, Plus, CheckCircle2, Circle, History } from "lucide-react";
+import { ArrowLeft, School, UserPlus, Baby, Plus, CheckCircle2, Circle, History, Activity, Utensils, Moon } from "lucide-react";
 import { toast } from "sonner";
 import {
   getClassroomById,
@@ -16,10 +16,12 @@ import {
   getChildren,
   unassignClassroom,
 } from "@/services/child.services";
-import { getCurrentAttendance } from "@/services/attendance.services"; // <-- New import
+import { getCurrentAttendance } from "@/services/attendance.services"; 
+import { getClassroomDailyMatrix } from "@/services/timeline.services"; // <-- Added import
 import AssignTeacherModal from "./AssignTeacherModal";
 import AddChildToClassroomModal from "./AddChildToClassroomModal";
 import TeacherChildHistoryModal from "../teacher/TeacherChildHistoryModal";
+import TeacherTimelineLoggerModal from "../timeline/TeacherTimelineLoggerModal";
 
 
 export default function ClassroomDetailView({
@@ -37,6 +39,7 @@ export default function ClassroomDetailView({
   const [isAssignOpen, setIsAssignOpen] = useState(false);
   const [isAddChildOpen, setIsAddChildOpen] = useState(false);
   const [viewingHistoryFor, setViewingHistoryFor] = useState<{id: string; firstName: string; lastName: string} | null>(null);
+  const [loggingActivityFor, setLoggingActivityFor] = useState<{id: string; firstName: string; lastName: string} | null>(null);
 
   const { data: classroom, isLoading } = useQuery({
     queryKey: ["classrooms", classroomId],
@@ -48,11 +51,30 @@ export default function ClassroomDetailView({
     queryKey: ["attendance", "current", classroomId],
     queryFn: () => getCurrentAttendance(`classroomId=${classroomId}`),
     enabled: !!classroom,
+    refetchInterval: 15000,
+  });
+
+  // Fetch the daily matrix for the classroom
+  const { data: matrixData } = useQuery({
+    queryKey: ["timeline", "matrix", classroomId, "today"],
+    queryFn: () => getClassroomDailyMatrix(classroomId).then((res) => res.data),
+    enabled: !!classroom,
+    refetchInterval: 60000,
   });
 
   const presentRecords = attendanceData?.data || [];
-  // Structural efficiency: O(1) lookup map for present children
+
   const presentByChild = new Map(presentRecords.map((r: any) => [r.childId, r]));
+
+  const matrixByChild = new Map<string, Record<string, number>>();
+  
+  (matrixData || []).forEach((event: { childId: string; eventType: string }) => {
+    if (!matrixByChild.has(event.childId)) {
+      matrixByChild.set(event.childId, {});
+    }
+    const childRecords = matrixByChild.get(event.childId)!;
+    childRecords[event.eventType] = (childRecords[event.eventType] || 0) + 1;
+  });
 
   const { mutate: removeTeacher } = useMutation({
     mutationFn: (userId: string) => unassignTeacher(classroomId, userId),
@@ -160,34 +182,89 @@ export default function ClassroomDetailView({
             <ul className="divide-y divide-border">
               {classroom.children.map((c) => {
                 const isPresent = presentByChild.has(c.id);
+                const childMatrix: Record<string, number> = matrixByChild.get(c.id) || {};
+
 
                 return (
                   <li
                     key={c.id}
                     onClick={() => router.push(`${studentsBasePath}/${c.id}`)}
-                    className="flex cursor-pointer flex-col gap-3 py-3 sm:flex-row sm:items-center sm:justify-between text-sm hover:bg-muted/50 transition-colors"
+                    className="flex cursor-pointer flex-col gap-3 py-4 sm:flex-row sm:items-center sm:justify-between text-sm hover:bg-muted/50 transition-colors"
                   >
                     <div className="flex items-center gap-3">
                       {c.photoUrl ? (
-                        <img src={c.photoUrl} alt={c.firstName} className="size-9 rounded-full object-cover" />
+                        <img src={c.photoUrl} alt={c.firstName} className="size-10 rounded-full object-cover" />
                       ) : (
-                        <div className="flex size-9 items-center justify-center rounded-full bg-muted text-muted-foreground">
-                          <Baby className="size-4" />
+                        <div className="flex size-10 items-center justify-center rounded-full bg-muted text-muted-foreground">
+                          <Baby className="size-5" />
                         </div>
                       )}
                       <div>
-                        <span className="font-medium text-foreground">{c.firstName} {c.lastName}</span>
-                        <p className="flex items-center gap-1 text-xs text-muted-foreground mt-0.5">
-                          {isPresent ? (
-                            <><CheckCircle2 className="size-3 text-emerald-600 dark:text-emerald-400" /> Present</>
-                          ) : (
-                            <><Circle className="size-3" /> Not checked in</>
-                          )}
-                        </p>
+                        <span className="font-medium text-foreground text-base">{c.firstName} {c.lastName}</span>
+                        <div className="flex items-center gap-4 mt-1">
+                          <p className="flex items-center gap-1 text-xs text-muted-foreground">
+                            {isPresent ? (
+                              <><CheckCircle2 className="size-3.5 text-emerald-600 dark:text-emerald-400" /> Present</>
+                            ) : (
+                              <><Circle className="size-3.5" /> Not checked in</>
+                            )}
+                          </p>
+
+{/* Daily Matrix Indicators */}
+{isPresent && (
+  <div className="flex items-center gap-1.5 pl-4 border-l border-border">
+    {/* MEAL BADGE */}
+    <span 
+      title={`${childMatrix["MEAL"] || 0} Meals logged`} 
+      className={`flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[11px] font-bold transition-colors ${
+        childMatrix["MEAL"] ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400" : "text-muted-foreground/30"
+      }`}
+    >
+      <Utensils className="size-3.5" />
+      {childMatrix["MEAL"] > 0 && childMatrix["MEAL"]}
+    </span>
+
+    {/* NAP BADGE */}
+    <span 
+      title={`${childMatrix["NAP"] || 0} Naps logged`} 
+      className={`flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[11px] font-bold transition-colors ${
+        childMatrix["NAP"] ? "bg-indigo-500/10 text-indigo-600 dark:text-indigo-400" : "text-muted-foreground/30"
+      }`}
+    >
+      <Moon className="size-3.5" />
+      {childMatrix["NAP"] > 0 && childMatrix["NAP"]}
+    </span>
+
+    {/* BATHROOM BADGE */}
+    <span 
+      title={`${childMatrix["BATHROOM"] || 0} Bathroom breaks logged`} 
+      className={`flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[11px] font-bold transition-colors ${
+        childMatrix["BATHROOM"] ? "bg-sky-500/10 text-sky-600 dark:text-sky-400" : "text-muted-foreground/30"
+      }`}
+    >
+      <Baby className="size-3.5" />
+      {childMatrix["BATHROOM"] > 0 && childMatrix["BATHROOM"]}
+    </span>
+  </div>
+)}
+                        </div>
                       </div>
                     </div>
                     
-                    <div className="flex items-center gap-2 mt-2 sm:mt-0 ml-12 sm:ml-0">
+                    <div className="flex items-center gap-2 mt-3 sm:mt-0 ml-12 sm:ml-0">
+                      {/* Log Activity - ONLY shows if present */}
+                      {isPresent && (
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setLoggingActivityFor(c);
+                          }}
+                          className="flex items-center gap-1.5 rounded-md border border-border bg-primary/10 px-3 py-1.5 text-xs font-medium text-primary hover:bg-primary/20 transition-colors"
+                        >
+                          <Activity className="size-3.5" /> Log Activity
+                        </button>
+                      )}
+
                       <button
                         onClick={(e) => {
                           e.stopPropagation();
@@ -271,6 +348,13 @@ export default function ClassroomDetailView({
           childId={viewingHistoryFor.id}
           childName={`${viewingHistoryFor.firstName} ${viewingHistoryFor.lastName}`}
           onClose={() => setViewingHistoryFor(null)}
+        />
+      )}
+      {loggingActivityFor && (
+        <TeacherTimelineLoggerModal
+          childId={loggingActivityFor.id}
+          childName={`${loggingActivityFor.firstName} ${loggingActivityFor.lastName}`}
+          onClose={() => setLoggingActivityFor(null)}
         />
       )}
     </div>
