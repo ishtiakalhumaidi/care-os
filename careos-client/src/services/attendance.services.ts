@@ -38,9 +38,11 @@ export const requestCheckIn = async (childId: string) => {
   }
 };
 
-export const confirmCheckIn = async (attendanceId: string) => {
+export const confirmCheckIn = async (attendanceId: string, offlineTime?: string) => {
   try {
-    const response = await serverApi.post(`/attendance/${attendanceId}/confirm-checkin`);
+    const response = await serverApi.post(`/attendance/${attendanceId}/confirm-checkin`, {
+      offlineTime 
+    });
     return response.data;
   } catch (error: any) {
     throw new Error(error.response?.data?.message || "Failed to confirm check-in");
@@ -56,10 +58,15 @@ export const requestCheckOut = async (childId: string, reason?: string) => {
   }
 };
 
-export const confirmCheckOut = async (attendanceId: string, pickedUpByGuardianId: string) => {
+export const confirmCheckOut = async (
+  attendanceId: string, 
+  pickedUpByGuardianId: string,
+  offlineTime?: string
+) => {
   try {
     const response = await serverApi.post(`/attendance/${attendanceId}/confirm-checkout`, {
       pickedUpByGuardianId,
+      offlineTime
     });
     return response.data;
   } catch (error: any) {

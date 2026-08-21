@@ -29,6 +29,8 @@ import ConfirmCheckoutModal from "@/components/dashboard/shared/ConfirmCheckoutM
 import TeacherChildHistoryModal from "./TeacherChildHistoryModal";
 import TeacherTimelineLoggerModal from "../timeline/TeacherTimelineLoggerModal";
 
+import { addOfflineAction } from "@/utils/offlineQueue.util"; 
+
 export default function ClassroomAttendanceRoster({
   classroomId,
   children,
@@ -58,7 +60,6 @@ export default function ClassroomAttendanceRoster({
     refetchInterval: 15000,
   });
 
-  // Fetch the daily matrix for the classroom
   const { data: matrixData } = useQuery({
     queryKey: ["timeline", "matrix", classroomId, "today"],
     queryFn: () => getClassroomDailyMatrix(classroomId).then((res) => res.data),
@@ -92,6 +93,28 @@ export default function ClassroomAttendanceRoster({
     onError: (err: any) => toast.error(err.message),
   });
 
+  const handleConfirmCheckIn = (attendanceId: string) => {
+    if (!navigator.onLine) {
+      addOfflineAction({
+        type: "CONFIRM_CHECKIN",
+        attendanceId: attendanceId,
+        timestamp: new Date().toISOString(),
+      });
+      
+      toast.success("Saved offline. Will sync when reconnected.");
+
+      queryClient.setQueryData(["attendance", "pending", classroomId], (oldData: any) => {
+        if (!oldData) return oldData;
+        return { 
+          ...oldData, 
+          data: oldData.data.filter((a: any) => a.id !== attendanceId) 
+        };
+      });
+    } else {
+      doConfirmCheckIn(attendanceId);
+    }
+  };
+
   return (
     <div className="space-y-4">
       {/* Pending Requests Section */}
@@ -122,7 +145,7 @@ export default function ClassroomAttendanceRoster({
                 <button
                   onClick={() =>
                     r.status === "PENDING_CHECKIN"
-                      ? doConfirmCheckIn(r.id)
+                      ? handleConfirmCheckIn(r.id)
                       : setConfirmingCheckout(r)
                   }
                   className="rounded-md bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground hover:bg-primary/90 transition-colors shrink-0"

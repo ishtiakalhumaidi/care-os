@@ -51,7 +51,7 @@ const requestCheckIn = async (childId: string, performer: Performer) => {
   });
 };
 
-const confirmCheckIn = async (attendanceId: string, performer: Performer) => {
+const confirmCheckIn = async (attendanceId: string, performer: Performer, offlineTime?: string) => {
   if (!isStaff(performer.role)) {
     throw new AppError(status.FORBIDDEN, "Only staff can confirm a check-in");
   }
@@ -69,9 +69,11 @@ const confirmCheckIn = async (attendanceId: string, performer: Performer) => {
     throw new AppError(status.FORBIDDEN, "You do not have access to this branch");
   }
 
+  const checkInTime = offlineTime ? new Date(offlineTime) : new Date();
+
   return prisma.attendance.update({
     where: { id: attendanceId },
-    data: { status: "CHECKED_IN", checkInTime: new Date(), checkedInBy: performer.id },
+    data: { status: "CHECKED_IN", checkInTime, checkedInBy: performer.id },
   });
 };
 
@@ -115,6 +117,7 @@ const confirmCheckOut = async (
   attendanceId: string,
   performer: Performer,
   pickedUpByGuardianId: string,
+  offlineTime?: string,
 ) => {
   if (!isStaff(performer.role)) {
     throw new AppError(status.FORBIDDEN, "Only staff can confirm a check-out");
@@ -140,11 +143,13 @@ const confirmCheckOut = async (
     throw new AppError(status.BAD_REQUEST, "Selected guardian is not authorized to pick up this child");
   }
 
+  const checkOutTime = offlineTime ? new Date(offlineTime) : new Date();
+
   return prisma.attendance.update({
     where: { id: attendanceId },
     data: {
       status: "CHECKED_OUT",
-      checkOutTime: new Date(),
+      checkOutTime,
       checkedOutBy: performer.id,
       pickedUpByGuardianId,
     },
