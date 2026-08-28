@@ -13,6 +13,7 @@ model Classroom {
   children           Child[]
   shifts             Shift[]
   users              User[]
+  conversations      Conversation[]
 }
 
 model ClassroomTeacher {

@@ -1,28 +1,31 @@
 model User {
-  id                 String    @id @default(uuid())
+  id                 String  @id @default(uuid())
   name               String
-  email              String    @unique
-  emailVerified      Boolean   @default(false)
-  role               Role      @default(GUARDIAN)
-  isActive           Boolean   @default(true)
-  needPasswordChange Boolean   @default(false)
-  isDeleted          Boolean   @default(false)
-  deletedAt          DateTime?
-  image              String?
-  createdAt          DateTime  @default(now())
-  updatedAt          DateTime  @updatedAt
+  email              String  @unique
+  emailVerified      Boolean @default(false)
+  role               Role    @default(GUARDIAN)
+  isActive           Boolean @default(true)
+  needPasswordChange Boolean @default(false)
+
+  isOnline     Boolean   @default(false)
+  lastActiveAt DateTime? @default(now())
+  isDeleted    Boolean   @default(false)
+  deletedAt    DateTime?
+  image        String?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
 
   tenantId         String?
-  tenant           Tenant?    @relation(fields: [tenantId], references: [id])
+  tenant           Tenant?         @relation(fields: [tenantId], references: [id])
   branchId         String?
-  branch           Branch?    @relation(fields: [branchId], references: [id])
+  branch           Branch?         @relation(fields: [branchId], references: [id])
   classroomId      String?
-  classroom        Classroom? @relation(fields: [classroomId], references: [id])
+  classroom        Classroom?      @relation(fields: [classroomId], references: [id])
   sessions         Session[]
   accounts         Account[]
-  approvedChildren Child[]    @relation("ChildApprovedBy")
-
-  guardianProfile ChildGuardian[]
+  approvedChildren Child[]         @relation("ChildApprovedBy")
+  conversations    Conversation[]  @relation("ConversationParticipants")
+  guardianProfile  ChildGuardian[]
 
   acceptedInvitation Invitation?
 
