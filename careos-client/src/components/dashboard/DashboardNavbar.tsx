@@ -9,6 +9,7 @@ import { logoutAction } from "@/actions/auth.actions";
 import { authClient } from "@/lib/auth-client";
 import { getMe } from "@/services/user.services";
 import { useSidebar } from "@/components/providers/SidebarContext";
+import MessagingDrawer from "../chat/MessagingDrawer";
 
 export default function DashboardNavbar() {
   const [isProfileOpen, setIsProfileOpen] = useState(false);
@@ -45,8 +46,14 @@ export default function DashboardNavbar() {
       <div className="h-6 w-px bg-border lg:hidden" aria-hidden="true" />
 
       <div className="flex flex-1 gap-x-4 self-stretch lg:gap-x-6 justify-between lg:justify-end">
-        <form className="relative flex flex-1 lg:max-w-md" action="#" method="GET">
-          <label htmlFor="search-field" className="sr-only">Search</label>
+        <form
+          className="relative flex flex-1 lg:max-w-md"
+          action="#"
+          method="GET"
+        >
+          <label htmlFor="search-field" className="sr-only">
+            Search
+          </label>
           <Search
             className="pointer-events-none absolute inset-y-0 left-0 h-full w-5 text-muted-foreground"
             aria-hidden="true"
@@ -61,6 +68,14 @@ export default function DashboardNavbar() {
         </form>
 
         <div className="flex items-center gap-x-4 lg:gap-x-6">
+          {/* Real-time Messaging Drawer */}
+          {user?.id && (
+            <MessagingDrawer
+              currentUserId={user.id}
+              currentUserRole={user.role}
+            />
+          )}
+
           <button
             type="button"
             className="-m-2.5 p-2.5 text-muted-foreground hover:text-foreground transition-colors"
@@ -69,7 +84,10 @@ export default function DashboardNavbar() {
             <Bell className="size-5" aria-hidden="true" />
           </button>
 
-          <div className="hidden lg:block lg:h-6 lg:w-px lg:bg-border" aria-hidden="true" />
+          <div
+            className="hidden lg:block lg:h-6 lg:w-px lg:bg-border"
+            aria-hidden="true"
+          />
 
           <ModeToggle />
 

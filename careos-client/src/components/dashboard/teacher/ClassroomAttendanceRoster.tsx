@@ -15,6 +15,7 @@ import {
   Activity,
   Utensils,
   Moon,
+  MessageSquare,
 } from "lucide-react";
 import {
   getCurrentAttendance,
@@ -28,8 +29,9 @@ import StaffCheckoutRequestModal from "@/components/dashboard/shared/StaffChecko
 import ConfirmCheckoutModal from "@/components/dashboard/shared/ConfirmCheckoutModal";
 import TeacherChildHistoryModal from "./TeacherChildHistoryModal";
 import TeacherTimelineLoggerModal from "../timeline/TeacherTimelineLoggerModal";
+import { useChat } from "@/components/providers/ChatContext";
 
-import { addOfflineAction } from "@/utils/offlineQueue.util"; 
+import { addOfflineAction } from "@/utils/offlineQueue.util";
 
 export default function ClassroomAttendanceRoster({
   classroomId,
@@ -47,6 +49,7 @@ export default function ClassroomAttendanceRoster({
     useState<IClassroomChildSummary | null>(null);
   const [loggingActivityFor, setLoggingActivityFor] =
     useState<IClassroomChildSummary | null>(null);
+  const { openDrawer } = useChat();
 
   const { data: presentData, isLoading: isLoadingPresent } = useQuery({
     queryKey: ["attendance", "current", classroomId],
@@ -100,16 +103,19 @@ export default function ClassroomAttendanceRoster({
         attendanceId: attendanceId,
         timestamp: new Date().toISOString(),
       });
-      
+
       toast.success("Saved offline. Will sync when reconnected.");
 
-      queryClient.setQueryData(["attendance", "pending", classroomId], (oldData: any) => {
-        if (!oldData) return oldData;
-        return { 
-          ...oldData, 
-          data: oldData.data.filter((a: any) => a.id !== attendanceId) 
-        };
-      });
+      queryClient.setQueryData(
+        ["attendance", "pending", classroomId],
+        (oldData: any) => {
+          if (!oldData) return oldData;
+          return {
+            ...oldData,
+            data: oldData.data.filter((a: any) => a.id !== attendanceId),
+          };
+        },
+      );
     } else {
       doConfirmCheckIn(attendanceId);
     }
@@ -299,6 +305,15 @@ export default function ClassroomAttendanceRoster({
                     >
                       <History className="size-3.5" />
                       History
+                    </button>
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        openDrawer(c.id);
+                      }}
+                      className="flex items-center gap-1.5 rounded-md border border-border bg-background px-3 py-1.5 text-xs font-medium text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
+                    >
+                      <MessageSquare className="size-3.5" /> Message
                     </button>
                   </div>
                 </li>

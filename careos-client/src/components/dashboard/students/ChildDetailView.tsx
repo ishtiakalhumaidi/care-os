@@ -12,7 +12,8 @@ import {
   reactivateChild,
 } from "@/services/child.services";
 import { getClassrooms } from "@/services/classroom.services";
-import { getChildAttendanceHistory } from "@/services/attendance.services"; // <-- New import
+import { getChildAttendanceHistory } from "@/services/attendance.services";
+import { useChat } from "@/components/providers/ChatContext";
 import {
   Baby,
   ArrowLeft,
@@ -21,13 +22,14 @@ import {
   X as XIcon,
   PauseCircle,
   PlayCircle,
+  MessageSquare,
 } from "lucide-react";
 import { toast } from "sonner";
 import LinkGuardianModal from "./LinkGuardianModal";
 import ApproveChildModal from "./ApproveChildModal";
 import RejectChildModal from "./RejectChildModal";
 import SuspendChildModal from "./SuspendChildModal";
-import GuardianAttendanceHistory from "../guardian/GuardianAttendanceHistory"; // <-- Reusing this component directly!
+import GuardianAttendanceHistory from "../guardian/GuardianAttendanceHistory";
 import Image from "next/image";
 
 export default function ChildDetailView({
@@ -46,6 +48,7 @@ export default function ChildDetailView({
   const [isSuspendOpen, setIsSuspendOpen] = useState(false);
   const [isAssignClassroomOpen, setIsAssignClassroomOpen] = useState(false);
   const [selectedClassroomId, setSelectedClassroomId] = useState("");
+  const { openDrawer } = useChat();
 
   const { data: child, isLoading } = useQuery({
     queryKey: ["children", childId],
@@ -217,6 +220,12 @@ export default function ChildDetailView({
                     : "Assign Classroom"}
                 </button>
               )}
+              <button
+                onClick={() => openDrawer(child.id)}
+                className="flex items-center gap-1 rounded-md bg-primary/10 px-3 py-1.5 text-xs font-medium text-primary hover:bg-primary/20 transition-colors"
+              >
+                <MessageSquare className="size-3.5" /> Message Guardians
+              </button>
             </div>
           )}
           {child.status === "SUSPENDED" && (

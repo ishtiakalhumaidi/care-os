@@ -2,20 +2,52 @@
 
 import React from "react";
 import Link from "next/link";
-import { useQuery } from "@tanstack/react-query";
-import { ArrowLeft, School, Loader2, Users } from "lucide-react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { ArrowLeft, School, Loader2, Users, MessageSquare } from "lucide-react";
 import { getMyClassroomById, IClassroom } from "@/services/classroom.services";
+import { startDirectMessage, startClassroomMessage } from "@/services/message.services";
 import ClassroomAttendanceRoster from "./ClassroomAttendanceRoster";
+import { useChat } from "@/components/providers/ChatContext";
+import { toast } from "sonner";
 
 export default function ClassroomAttendanceDetailView({
   classroomId,
+  currentUserId,
 }: {
   classroomId: string;
+  currentUserId?: string;
 }) {
-  // We use getMyClassroomById here so it fetches the extra details like teacherAssignments and counts
-  const { data: classroom, isLoading, isError, error } = useQuery({
+  const queryClient = useQueryClient();
+  const { openDrawer } = useChat();
+
+  const {
+    data: classroom,
+    isLoading,
+    isError,
+    error,
+  } = useQuery({
     queryKey: ["my-classroom", classroomId],
     queryFn: () => getMyClassroomById(classroomId).then((res) => res.data as IClassroom),
+  });
+
+  // Mutation for Team Chat
+  const { mutate: startTeamChat, isPending: isStartingTeam } = useMutation({
+    mutationFn: () => startClassroomMessage(classroomId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["my-conversations"] });
+      openDrawer();
+    },
+    onError: () => toast.error("Failed to open team chat"),
+  });
+
+  // Mutation for 1-on-1 Direct Message
+  const { mutate: startDM, isPending: isStartingDM } = useMutation({
+    mutationFn: (targetId: string) => startDirectMessage(targetId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["my-conversations"] });
+      openDrawer();
+    },
+    onError: () => toast.error("Failed to start direct message"),
   });
 
   if (isLoading) {
@@ -53,7 +85,9 @@ export default function ClassroomAttendanceDetailView({
             <School className="size-6" />
           </div>
           <div>
-            <h1 className="text-xl font-semibold text-foreground">{classroom.name}</h1>
+            <h1 className="text-xl font-semibold text-foreground">
+              {classroom.name}
+            </h1>
             <p className="text-sm text-muted-foreground">
               {classroom.ageGroup} · {classroom.branch?.name}
             </p>
@@ -69,7 +103,9 @@ export default function ClassroomAttendanceDetailView({
           </div>
           <div>
             <p className="text-xs text-muted-foreground">Ratio limit</p>
-            <p className="mt-1 text-sm font-medium text-foreground">1 : {classroom.ratioLimit}</p>
+            <p className="mt-1 text-sm font-medium text-foreground">
+              1 : {classroom.ratioLimit}
+            </p>
           </div>
           <div>
             <p className="text-xs text-muted-foreground">Teachers assigned</p>
@@ -82,7 +118,6 @@ export default function ClassroomAttendanceDetailView({
 
       {/* Main Content Grid */}
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
-        {/* Left Column: Attendance Roster (Takes up 2 columns for space) */}
         <div className="lg:col-span-2">
           <ClassroomAttendanceRoster classroomId={classroomId}>
             {classroom.children || []}
@@ -92,18 +127,42 @@ export default function ClassroomAttendanceDetailView({
         {/* Right Column: Other Assigned Teachers */}
         <div className="space-y-6">
           <div className="rounded-lg border border-border bg-card p-6 shadow-sm">
-            <h3 className="mb-4 flex items-center gap-2 text-sm font-semibold text-foreground">
-              <Users className="size-4" />
-              Teachers in this room
-            </h3>
+            <div className="mb-4 flex items-center justify-between">
+              <h3 className="flex items-center gap-2 text-sm font-semibold text-foreground">
+                <Users className="size-4" />
+                Teachers in this room
+              </h3>
+              
+              <button 
+                onClick={() => startTeamChat()} 
+                disabled={isStartingTeam}
+                className="text-xs font-medium text-primary hover:underline disabled:opacity-50"
+              >
+                {isStartingTeam ? "Opening..." : "Message Team"}
+              </button>
+            </div>
+            
             {!classroom.teacherAssignments || classroom.teacherAssignments.length === 0 ? (
               <p className="text-sm text-muted-foreground">No other teachers assigned.</p>
             ) : (
               <ul className="divide-y divide-border">
                 {classroom.teacherAssignments.map((a) => (
-                  <li key={a.id} className="py-3 text-sm first:pt-0 last:pb-0">
-                    <p className="font-medium text-foreground">{a.teacher.name}</p>
-                    <p className="text-xs text-muted-foreground">{a.teacher.email}</p>
+                  <li key={a.id} className="flex items-center justify-between py-3 text-sm first:pt-0 last:pb-0">
+                    <div>
+                      <p className="font-medium text-foreground">{a.teacher.name}</p>
+                      <p className="text-xs text-muted-foreground">{a.teacher.email}</p>
+                    </div>
+                    {/* The Direct Message Button */}
+                    {a.teacher.id !== currentUserId && (
+                      <button 
+                        onClick={() => startDM(a.teacher.id)}
+                        disabled={isStartingDM}
+                        className="p-1.5 text-muted-foreground hover:bg-muted hover:text-foreground rounded-md transition-colors disabled:opacity-50"
+                        title="Send Direct Message"
+                      >
+                        <MessageSquare className="size-4" />
+                      </button>
+                    )}
                   </li>
                 ))}
               </ul>
