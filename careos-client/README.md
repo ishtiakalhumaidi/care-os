@@ -159,40 +159,39 @@ Group layout: persistent sidebar + header. Access is gated by RBAC middleware ch
 
 ## Key Features by Sprint
 
-### Sprint 1: Tenant & Enrollment Pipeline ✅
+### Sprint 1: Tenant & Enrollment Pipeline ✅ Complete
 
 | Feature | Location | Notes |
 |---------|----------|-------|
-| **Landing Page** | `app/page.tsx` | Hero, live activity feed simulation, waitlist capture form |
 | **Waitlist Form** | `components/forms/WaitlistForm.tsx` | Guardian-facing child profile submission |
 | **Enrollment Approval** | `app/(dashboard)/owner/enrollment/` | Admin UI: waitlist → enrolled → classroom assignment |
 | **Invitation Flow** | `app/(auth)/accept-invite/` | Magic-link acceptance with role-aware redirect |
 | **Guardian Setup Wizard** | `app/(dashboard)/guardian/setup/` | Medical/allergy profiles, authorized pickups |
-| **Theme Toggle** | `components/common/ThemeToggle.tsx` | Dark / light / system via next-themes |
 
-### Sprint 2: The Daily Operational Loop ✅
+### Sprint 2: The Daily Operational Loop ✅ Complete
 
 | Feature | Location | Notes |
 |---------|----------|-------|
-| **Kiosk Check-In/Out** | `app/(dashboard)/teacher/kiosk/` | Guardian-facing sign interface with time-stamping |
+| **Kiosk Check-In/Out** | `app/(dashboard)/teacher/kiosk/` | Request → staff-confirm flow with pickup authorization checks |
 | **Live Ratio Dashboard** | `app/(dashboard)/center-admin/ratios/` | Real-time teacher-to-child ratio cards per room |
 | **Teacher Timeline Logger** | `app/(dashboard)/teacher/timeline/` | Quick-tap UI for meals, naps, activities |
 | **Staff Schedule View** | `app/(dashboard)/teacher/schedule/` | Upcoming shifts & classroom assignments |
 | **Offline Data Sync** | `lib/offlineQueue.ts` | Kiosk actions queued when offline, synced on reconnect |
-| **Guardian Activity Feed** | `app/(dashboard)/guardian/feed/` | Facebook-style wall: naps, meals, photos |
+| **Guardian Activity Feed** | `app/(dashboard)/guardian/feed/` | Chronological wall: naps, meals, photos |
 | **Timesheet Interface** | `app/(dashboard)/teacher/timesheet/` | Clock in/out with session persistence |
 
-### Sprint 3: Parent Engagement, Billing & Compliance 🚧
+### Sprint 3: Parent Engagement, Billing & Compliance 🚧 In Progress
 
 | Feature | Location | Status |
 |---------|----------|--------|
-| **Encrypted Gallery** | `app/(dashboard)/guardian/gallery/` | 🚧 Cloudinary-integrated photo/video viewer |
-| **Direct Messaging** | `app/(dashboard)/guardian/messages/` | ✅ Real-time chat with read receipts |
-| **Emergency Broadcasts** | `app/(dashboard)/center-admin/broadcasts/` | ✅ Push alert composer |
-| **Billing Portal** | `app/(dashboard)/guardian/billing/` | 🚧 Invoice & payment method management |
-| **Split-Custody Payments** | `app/(dashboard)/guardian/billing/split/` | 🚧 Percentage-based payment sharing UI |
-| **Compliance PDF Generator** | `app/(dashboard)/owner/compliance/` | 🚧 Attendance & ratio report export |
-| **Document Vault** | `app/(dashboard)/guardian/documents/` | 🚧 Immunization records & contract signing |
+| **Direct Messaging** | `app/(dashboard)/guardian/messages/` | ✅ Real-time chat, role-aware inbox |
+| **Read Receipts** | `components/chat/ChatWindow.tsx` | ✅ Seen indicators, unread badges |
+| **Emergency Broadcasts** | `app/(dashboard)/center-admin/broadcasts/` | ✅ Priority-tagged alert composer |
+| **Encrypted Gallery** | `app/(dashboard)/guardian/gallery/` | ⏳ Planned — pending signed-URL security design |
+| **Billing Portal** | `app/(dashboard)/guardian/billing/` | ⏳ Planned |
+| **Split-Custody Payments** | `app/(dashboard)/guardian/billing/split/` | ⏳ Planned |
+| **Compliance PDF Generator** | `app/(dashboard)/owner/compliance/` | ⏳ Planned |
+| **Document Vault** | `app/(dashboard)/guardian/documents/` | ⏳ Planned |
 
 ---
 

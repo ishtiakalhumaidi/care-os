@@ -54,6 +54,8 @@ Built around strict **Role-Based Access Control (RBAC)** and complex many-to-man
 
 ## Feature Roadmap
 
+**Current status:** Sprints 1–2 complete. Sprint 3 in progress — Direct Messaging, Read Receipts, and Emergency Broadcasts shipped; Encrypted Gallery, Billing Portal, Split-Custody Payments, Compliance PDFs, and Document Vault remain.
+
 ### Sprint 1: Tenant & Enrollment Pipeline ✅
 > *Enable the Center Owner to set up their digital shop and start filling seats.*
 
@@ -83,13 +85,13 @@ Built around strict **Role-Based Access Control (RBAC)** and complex many-to-man
 
 | Feature | Status | Description |
 |---------|--------|-------------|
-| **Encrypted Gallery** | 🚧 | Viewing of photos/videos associated with specific children, restricted to authorized Guardians. |
-| **Direct Messaging (DM) & Read Receipts** | 🚧 | Real-time chat UI between Parents and Teachers, including UI indicators to confirm messages are seen. |
-| **Emergency Broadcasts** | 🚧 | Admin notification center to send push alerts to mobile apps for urgent events. |
-| **Guardian Billing Portal** | 🚧 | UI for Guardians to view invoices, manage payment methods, and see their tuition breakdown. |
-| **Split-Custody Payment UI** | 🚧 | Interface for Primary Guardians to define percentage-based splits with secondary Guardians. |
-| **Compliance PDF Generator** | 🚧 | Admin tool to generate and download attendance/ratio reports for government licensing. |
-| **Document Vault** | 🚧 | UI for uploading/signing immunization records and enrollment contracts. |
+| **Direct Messaging (DM) & Read Receipts** | ✅ | Real-time chat UI between Parents and Teachers, including UI indicators to confirm messages are seen. |
+| **Emergency Broadcasts** | ✅ | Admin notification center to send priority-tagged alerts for urgent events. |
+| **Encrypted Gallery** | ⏳ | Viewing of photos/videos associated with specific children, restricted to authorized Guardians. |
+| **Guardian Billing Portal** | ⏳ | UI for Guardians to view invoices, manage payment methods, and see their tuition breakdown. |
+| **Split-Custody Payment UI** | ⏳ | Interface for Primary Guardians to define percentage-based splits with secondary Guardians. |
+| **Compliance PDF Generator** | ⏳ | Admin tool to generate and download attendance/ratio reports for government licensing. |
+| **Document Vault** | ⏳ | UI for uploading/signing immunization records and enrollment contracts. |
 
 ---
 
