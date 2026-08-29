@@ -2,7 +2,7 @@ model Broadcast {
   id        String            @id @default(uuid())
   title     String
   body      String
-  priority  BroadcastPriority @default(NORMAL)
+  priority  BroadcastPriority @default(INFO)
   audience  BroadcastAudience @default(BRANCH)
   createdAt DateTime          @default(now())
 
@@ -12,9 +12,27 @@ model Broadcast {
   branchId String?
   branch   Branch? @relation(fields: [branchId], references: [id], onDelete: Cascade)
 
+  classroomId String?
+  classroom   Classroom? @relation(fields: [classroomId], references: [id], onDelete: Cascade)
+
   createdBy String
   creator   User   @relation(fields: [createdBy], references: [id])
 
+  acknowledgments BroadcastAcknowledgment[]
+
   @@index([tenantId, createdAt])
   @@index([branchId, createdAt])
+  @@index([classroomId, createdAt])
+}
+
+model BroadcastAcknowledgment {
+  id             String    @id @default(uuid())
+  broadcastId    String
+  broadcast      Broadcast @relation(fields: [broadcastId], references: [id], onDelete: Cascade)
+  userId         String
+  user           User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  acknowledgedAt DateTime  @default(now())
+
+  @@unique([broadcastId, userId])
+  @@index([broadcastId])
 }

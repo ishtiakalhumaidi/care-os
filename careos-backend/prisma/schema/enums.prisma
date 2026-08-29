@@ -64,12 +64,13 @@ enum DocumentStatus {
 }
 
 enum BroadcastPriority {
-  NORMAL
-  URGENT
+  INFO
+  WARNING
+  CRITICAL
 }
 
 enum BroadcastAudience {
-  TENANT_WIDE
+  TENANT
   BRANCH
   CLASSROOM
 }

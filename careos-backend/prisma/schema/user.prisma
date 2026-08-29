@@ -37,7 +37,8 @@ model User {
   classroomAssignments ClassroomTeacher[] @relation("TeacherAssignments")
   sentMessages         Message[]
 
-  createdBroadcasts Broadcast[]
+  createdBroadcasts        Broadcast[]
+  broadcastAcknowledgments BroadcastAcknowledgment[]
   guardianRequests  GuardianRequest[]
 }
 

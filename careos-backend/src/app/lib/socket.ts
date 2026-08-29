@@ -17,11 +17,15 @@ export const initSocket = (httpServer: HttpServer, frontendUrl: string) => {
       if (!token) return next(new Error("Token is missing."));
       if (token.startsWith("Bearer ")) token = token.split(" ")[1];
 
-      const decoded = jwt.verify(token, envVars.ACCESS_TOKEN_SECRET) as JwtPayload;
+      const decoded = jwt.verify(
+        token,
+        envVars.ACCESS_TOKEN_SECRET,
+      ) as JwtPayload;
       const userId = decoded.userId || decoded.id;
 
       const user = await prisma.user.findUnique({ where: { id: userId } });
-      if (!user || user.isDeleted || !user.isActive) return next(new Error("User invalid."));
+      if (!user || user.isDeleted || !user.isActive)
+        return next(new Error("User invalid."));
 
       socket.data.user = user;
       next();
@@ -32,63 +36,122 @@ export const initSocket = (httpServer: HttpServer, frontendUrl: string) => {
 
   io.on("connection", async (socket: Socket) => {
     const user = socket.data.user;
-    
+
     // 1. Mark user online & Broadcast to others
     await prisma.user.update({
       where: { id: user.id },
-      data: { isOnline: true, lastActiveAt: new Date() }
+      data: { isOnline: true, lastActiveAt: new Date() },
     });
-    socket.broadcast.emit("user_status_changed", { userId: user.id, isOnline: true, lastActiveAt: new Date() });
+    socket.broadcast.emit("user_status_changed", {
+      userId: user.id,
+      isOnline: true,
+      lastActiveAt: new Date(),
+    });
+
+    socket.on("authenticate_user", async (userData: any) => {
+      // 1. Join Tenant Room (Everyone gets these)
+      if (userData.tenantId) {
+        socket.join(`tenant_${userData.tenantId}`);
+      }
+
+      // 2. Join Branch Room (Staff & Guardians linked to a branch)
+      if (userData.branchId) {
+        socket.join(`branch_${userData.branchId}`);
+      }
+
+      // 3. Join Classroom Rooms (Teachers assigned, or Guardians with children here)
+      if (userData.classroomIds && Array.isArray(userData.classroomIds)) {
+        userData.classroomIds.forEach((id: string) => {
+          socket.join(`classroom_${id}`);
+        });
+      }
+
+      console.log(`User ${userData.id} joined broadcast rooms.`);
+    });
 
     socket.on("join_conversation", (conversationId: string) => {
       socket.join(`conversation_${conversationId}`);
     });
 
     // 2. Handle Sending Messages
-    socket.on("send_message", async (data: { conversationId: string; content: string }) => {
-      try {
-        const newMessage = await prisma.message.create({
-          data: {
-            content: data.content,
-            conversationId: data.conversationId,
-            senderId: user.id,
-          },
-          include: { sender: { select: { id: true, name: true, image: true, role: true } } },
-        });
+    socket.on(
+      "send_message",
+      async (data: { conversationId: string; content: string }) => {
+        try {
+          const newMessage = await prisma.message.create({
+            data: {
+              content: data.content,
+              conversationId: data.conversationId,
+              senderId: user.id,
+            },
+            include: {
+              sender: {
+                select: { id: true, name: true, image: true, role: true },
+              },
+            },
+          });
 
-        io.to(`conversation_${data.conversationId}`).emit("new_message", newMessage);
-      } catch (error) {
-        socket.emit("message_error", { message: "Failed to send message" });
-      }
-    });
+          io.to(`conversation_${data.conversationId}`).emit(
+            "new_message",
+            newMessage,
+          );
+        } catch (error) {
+          socket.emit("message_error", { message: "Failed to send message" });
+        }
+      },
+    );
 
     // 3. Handle Edit Message
-    socket.on("edit_message", async (data: { conversationId: string; messageId: string; newContent: string }) => {
-      try {
-        const updatedMsg = await prisma.message.update({
-          where: { id: data.messageId },
-          data: { content: data.newContent, isEdited: true },
-          include: { sender: { select: { id: true, name: true, image: true, role: true } } }
-        });
-        io.to(`conversation_${data.conversationId}`).emit("message_edited", updatedMsg);
-      } catch (error) {
-        console.error(error);
-      }
-    });
+    socket.on(
+      "edit_message",
+      async (data: {
+        conversationId: string;
+        messageId: string;
+        newContent: string;
+      }) => {
+        try {
+          const updatedMsg = await prisma.message.update({
+            where: { id: data.messageId },
+            data: { content: data.newContent, isEdited: true },
+            include: {
+              sender: {
+                select: { id: true, name: true, image: true, role: true },
+              },
+            },
+          });
+          io.to(`conversation_${data.conversationId}`).emit(
+            "message_edited",
+            updatedMsg,
+          );
+        } catch (error) {
+          console.error(error);
+        }
+      },
+    );
 
     // 4. Handle Delete Message
-    socket.on("delete_message", async (data: { conversationId: string; messageId: string }) => {
-      try {
-        const updatedMsg = await prisma.message.update({
-          where: { id: data.messageId },
-          data: { isDeleted: true, content: "" }, 
-          include: { sender: { select: { id: true, name: true, image: true, role: true } } }
-        });
-        io.to(`conversation_${data.conversationId}`).emit("message_deleted", updatedMsg);
-      } catch (error) {
-        console.error(error);
-      }
-    });
+    socket.on(
+      "delete_message",
+      async (data: { conversationId: string; messageId: string }) => {
+        try {
+          const updatedMsg = await prisma.message.update({
+            where: { id: data.messageId },
+            data: { isDeleted: true, content: "" },
+            include: {
+              sender: {
+                select: { id: true, name: true, image: true, role: true },
+              },
+            },
+          });
+          io.to(`conversation_${data.conversationId}`).emit(
+            "message_deleted",
+            updatedMsg,
+          );
+        } catch (error) {
+          console.error(error);
+        }
+      },
+    );
 
     // 5. Handle Read Receipts
     socket.on("mark_read", async (data: { conversationId: string }) => {
@@ -114,9 +177,13 @@ export const initSocket = (httpServer: HttpServer, frontendUrl: string) => {
     socket.on("disconnect", async () => {
       await prisma.user.update({
         where: { id: user.id },
-        data: { isOnline: false, lastActiveAt: new Date() }
+        data: { isOnline: false, lastActiveAt: new Date() },
       });
-      socket.broadcast.emit("user_status_changed", { userId: user.id, isOnline: false, lastActiveAt: new Date() });
+      socket.broadcast.emit("user_status_changed", {
+        userId: user.id,
+        isOnline: false,
+        lastActiveAt: new Date(),
+      });
     });
   });
 

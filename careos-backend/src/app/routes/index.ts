@@ -11,6 +11,7 @@ import { AttendanceRoutes } from "../module/attendance/attendance.route.js";
 import { TimelineRoutes } from "../module/timeline/timeline.route.js";
 import { ScheduleRoutes } from "../module/schedule/schedule.route.js";
 import { MessageRoutes } from "../module/message/message.route.js";
+import { BroadcastRoutes } from "../module/broadcast/broadcast.route.js";
 
 const router = Router();
 
@@ -26,5 +27,6 @@ router.use("/attendance", AttendanceRoutes);
 router.use("/timeline", TimelineRoutes);
 router.use("/schedules", ScheduleRoutes);
 router.use("/messages", MessageRoutes);
+router.use("/broadcasts", BroadcastRoutes);
 
 export const IndexRoutes = router;

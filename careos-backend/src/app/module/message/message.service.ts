@@ -220,7 +220,7 @@ const getOrCreateConversation = async (childId: string) => {
   return conversation;
 };
 
-const getMessages = async (conversationId: string, userId: string) => {
+const getMessages = async (conversationId: string, userId: string, limit: number = 50) => {
   const conversation = await prisma.conversation.findUnique({
     where: { id: conversationId },
   });
@@ -229,8 +229,8 @@ const getMessages = async (conversationId: string, userId: string) => {
 
   const messages = await prisma.message.findMany({
     where: { conversationId },
-    orderBy: { createdAt: "asc" },
-    take: 50,
+    orderBy: { createdAt: "desc" },
+    take: limit, 
     include: {
       sender: {
         select: { id: true, name: true, role: true, image: true, isOnline: true, lastActiveAt: true },
@@ -243,7 +243,7 @@ const getMessages = async (conversationId: string, userId: string) => {
     data: { readAt: new Date() },
   });
 
-  return messages;
+  return messages.reverse(); 
 };
 
 export const MessageService = {
