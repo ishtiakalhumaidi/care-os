@@ -66,9 +66,9 @@ export const getConversationByChild = async (childId: string) => {
   }
 };
 
-export const getConversationMessages = async (conversationId: string) => {
+export const getConversationMessages = async (conversationId: string, limit: number = 50) => {
   try {
-    const response = await serverApi.get(`/messages/conversation/${conversationId}/messages`);
+    const response = await serverApi.get(`/messages/conversation/${conversationId}/messages?limit=${limit}`);
     return response.data;
   } catch (error: any) {
     console.error("Backend Error:", error.response?.data || error.message);

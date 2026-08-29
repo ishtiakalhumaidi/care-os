@@ -9,6 +9,6 @@ const BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL
 export const authClient = createAuthClient({
     baseURL: BASE_URL,
     plugins: [
-        emailOTPClient(), // Injects the authClient.emailOtp methods
+        emailOTPClient(),
     ],
 });
