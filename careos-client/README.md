@@ -188,7 +188,7 @@ Group layout: persistent sidebar + header. Access is gated by RBAC middleware ch
 |---------|----------|--------|
 | **Encrypted Gallery** | `app/(dashboard)/guardian/gallery/` | 🚧 Cloudinary-integrated photo/video viewer |
 | **Direct Messaging** | `app/(dashboard)/guardian/messages/` | ✅ Real-time chat with read receipts |
-| **Emergency Broadcasts** | `app/(dashboard)/center-admin/broadcasts/` | 🚧 Push alert composer |
+| **Emergency Broadcasts** | `app/(dashboard)/center-admin/broadcasts/` | ✅ Push alert composer |
 | **Billing Portal** | `app/(dashboard)/guardian/billing/` | 🚧 Invoice & payment method management |
 | **Split-Custody Payments** | `app/(dashboard)/guardian/billing/split/` | 🚧 Percentage-based payment sharing UI |
 | **Compliance PDF Generator** | `app/(dashboard)/owner/compliance/` | 🚧 Attendance & ratio report export |
