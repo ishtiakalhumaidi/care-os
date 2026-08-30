@@ -18,7 +18,9 @@ import {
   Layers,
   CreditCard,
   UserCheck,
-  Megaphone, BellRing
+  Megaphone, 
+  BellRing,
+  Images 
 } from "lucide-react";
 import { Logo } from "@/components/common/logo";
 import { useSidebar } from "../providers/SidebarContext";
@@ -61,6 +63,7 @@ const teacherNavigation: NavItem[] = [
 const guardianNavigation: NavItem[] = [
   { name: "Dashboard", href: "/guardian/dashboard", icon: LayoutDashboard },
   { name: "Alerts", href: "/guardian/dashboard/alerts", icon: BellRing },
+  { name: "Gallery", href: "/guardian/dashboard/gallery", icon: Images }, 
 ];
 
 const sharedNavigation: NavItem[] = [

@@ -23,6 +23,9 @@ import {
   PauseCircle,
   PlayCircle,
   MessageSquare,
+  Images,
+  AlertTriangle,
+  DoorOpen,
 } from "lucide-react";
 import { toast } from "sonner";
 import LinkGuardianModal from "./LinkGuardianModal";
@@ -31,6 +34,7 @@ import RejectChildModal from "./RejectChildModal";
 import SuspendChildModal from "./SuspendChildModal";
 import GuardianAttendanceHistory from "../guardian/GuardianAttendanceHistory";
 import Image from "next/image";
+import Link from "next/link";
 
 export default function ChildDetailView({
   childId,
@@ -97,213 +101,270 @@ export default function ChildDetailView({
   });
 
   if (isLoading || !child) {
-    return <p className="text-sm text-muted-foreground">Loading...</p>;
+    return (
+      <div className="flex items-center justify-center py-24">
+        <p className="text-sm text-muted-foreground">Loading student…</p>
+      </div>
+    );
   }
 
   const latestRecord = attendanceHistory?.[0];
   const isCheckedIn = Boolean(latestRecord && !latestRecord.checkOutTime);
 
+  const statusStyles: Record<string, string> = {
+    ENROLLED: "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400",
+    APPLIED: "bg-blue-500/10 text-blue-600 dark:text-blue-400",
+    WAITLISTED: "bg-violet-500/10 text-violet-600 dark:text-violet-400",
+    SUSPENDED: "bg-amber-500/10 text-amber-600 dark:text-amber-400",
+    REJECTED: "bg-destructive/10 text-destructive",
+  };
+
+  const initials = `${child.firstName?.[0] ?? ""}${child.lastName?.[0] ?? ""}`.toUpperCase();
+
   return (
-    <div className="space-y-6">
+    <div className="mx-auto w-full max-w-6xl space-y-6 px-4 py-6 sm:px-6 lg:px-8">
+      {/* Back nav */}
       <button
         onClick={() => router.push(basePath)}
-        className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors"
+        className="flex items-center gap-1.5 text-sm text-muted-foreground transition-colors hover:text-foreground"
       >
-        <ArrowLeft className="size-4" /> Back to students
+        <ArrowLeft className="size-4" />
+        Back to students
       </button>
 
-      {/* Header Profile Card */}
-      <div className="rounded-lg border border-border bg-card p-6">
-        <div className="flex items-center gap-4">
-          {child.photoUrl ? (
-            <Image
-              src={child.photoUrl}
-              alt={child.firstName}
-              className="size-20 rounded-full object-cover border border-border"
-              width={80}
-              height={80}
-            />
-          ) : (
-            <div className="flex size-20 items-center justify-center rounded-full bg-muted text-muted-foreground">
-              <Baby className="size-8" />
-            </div>
-          )}
-          <div>
-            <h2 className="text-xl font-semibold text-foreground">
-              {child.firstName} {child.lastName}
-            </h2>
-            <p className="text-sm text-muted-foreground">
-              ID: {child.childCode}
-            </p>
-            <p className="text-sm text-muted-foreground">
-              {child.branch?.name || "N/A"}
-              {child.classroom && ` · ${child.classroom.name}`}
-            </p>
-            {isCheckedIn && latestRecord && (
-              <p className="mt-1 text-xs font-medium text-primary">
-                Checked in since{" "}
-                {new Date(latestRecord.checkInTime!).toLocaleTimeString([], {
-                  hour: "2-digit",
-                  minute: "2-digit",
-                })}
-              </p>
+      {/* Profile / Header Card */}
+      <div className="overflow-hidden rounded-xl border border-border bg-card">
+        <div className="flex flex-col gap-4 p-5 sm:flex-row sm:items-start sm:justify-between sm:p-6">
+          {/* Identity */}
+          <div className="flex items-center gap-4">
+            {child.photoUrl ? (
+              <Image
+                src={child.photoUrl}
+                alt={child.firstName}
+                className="size-16 shrink-0 rounded-full border border-border object-cover sm:size-20"
+                width={80}
+                height={80}
+              />
+            ) : (
+              <div className="flex size-16 shrink-0 items-center justify-center rounded-full bg-muted text-muted-foreground sm:size-20">
+                <Baby className="size-7 sm:size-8" />
+              </div>
             )}
+            <div className="min-w-0">
+              <div className="flex flex-wrap items-center gap-2">
+                <h2 className="truncate text-lg font-semibold text-foreground sm:text-xl">
+                  {child.firstName} {child.lastName}
+                </h2>
+                <span
+                  className={`shrink-0 rounded-full px-2.5 py-0.5 text-xs font-medium ${
+                    statusStyles[child.status] ?? "bg-muted text-foreground"
+                  }`}
+                >
+                  {child.status}
+                </span>
+              </div>
+              <p className="mt-0.5 text-sm text-muted-foreground">
+                ID: {child.childCode}
+              </p>
+              <p className="text-sm text-muted-foreground">
+                {child.branch?.name || "N/A"}
+                {child.classroom && ` · ${child.classroom.name}`}
+              </p>
+              {isCheckedIn && latestRecord && (
+                <p className="mt-1.5 inline-flex items-center gap-1 rounded-full bg-primary/10 px-2.5 py-0.5 text-xs font-medium text-primary">
+                  <DoorOpen className="size-3" />
+                  Checked in since{" "}
+                  {new Date(latestRecord.checkInTime!).toLocaleTimeString([], {
+                    hour: "2-digit",
+                    minute: "2-digit",
+                  })}
+                </p>
+              )}
+            </div>
           </div>
         </div>
 
-        <div className="mt-4 flex flex-wrap items-center gap-2 border-t border-border pt-4">
-          <span className="rounded-md bg-muted px-2.5 py-1 text-xs font-medium text-foreground">
-            {child.status}
-          </span>
+        {/* Action toolbar */}
+        <div className="flex flex-wrap items-center gap-2 border-t border-border bg-muted/30 px-5 py-3 sm:px-6">
           {child.status === "APPLIED" && (
             <>
               <button
                 onClick={() => setIsApproveOpen(true)}
-                className="flex items-center gap-1 rounded-md bg-primary/10 px-3 py-1.5 text-xs font-medium text-primary hover:bg-primary/20 transition-colors"
+                className="inline-flex items-center gap-1.5 rounded-md bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground transition-colors hover:bg-primary/90"
               >
                 <Check className="size-3.5" /> Approve
               </button>
               <button
                 onClick={() => setIsRejectOpen(true)}
-                className="flex items-center gap-1 rounded-md bg-destructive/10 px-3 py-1.5 text-xs font-medium text-destructive hover:bg-destructive/20 transition-colors"
+                className="inline-flex items-center gap-1.5 rounded-md border border-destructive/30 px-3 py-1.5 text-xs font-medium text-destructive transition-colors hover:bg-destructive/10"
               >
                 <XIcon className="size-3.5" /> Reject
               </button>
             </>
           )}
+
           {child.status === "ENROLLED" && (
             <button
               onClick={() => setIsSuspendOpen(true)}
-              className="flex items-center gap-1 rounded-md bg-amber-500/10 px-3 py-1.5 text-xs font-medium text-amber-600 dark:text-amber-400 hover:bg-amber-500/20 transition-colors"
+              className="inline-flex items-center gap-1.5 rounded-md border border-amber-500/30 px-3 py-1.5 text-xs font-medium text-amber-600 transition-colors hover:bg-amber-500/10 dark:text-amber-400"
             >
               <PauseCircle className="size-3.5" /> Suspend
             </button>
           )}
-          {(child.status === "ENROLLED" || child.status === "WAITLISTED") && (
-            <div className="flex items-center">
-              {isAssignClassroomOpen ? (
-                <div className="flex items-center gap-2 ml-2">
-                  <select
-                    value={selectedClassroomId}
-                    onChange={(e) => setSelectedClassroomId(e.target.value)}
-                    disabled={isAssigning}
-                    className="rounded-md border border-input bg-background px-3 py-1.5 text-xs"
-                  >
-                    <option value="">Select classroom</option>
-                    {(branchClassrooms?.data || []).map((c: any) => (
-                      <option key={c.id} value={c.id}>
-                        {c.name} ({c._count?.children ?? 0}/{c.legalCapacity})
-                      </option>
-                    ))}
-                  </select>
-                  <button
-                    onClick={() => assign()}
-                    disabled={isAssigning || !selectedClassroomId}
-                    className="rounded-md bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
-                  >
-                    {isAssigning ? "Assigning..." : "Confirm"}
-                  </button>
-                  <button
-                    onClick={() => setIsAssignClassroomOpen(false)}
-                    className="text-xs text-muted-foreground hover:underline"
-                  >
-                    Cancel
-                  </button>
-                </div>
-              ) : (
-                <button
-                  onClick={() => setIsAssignClassroomOpen(true)}
-                  className="flex items-center gap-1 rounded-md bg-muted px-3 py-1.5 text-xs font-medium text-foreground hover:bg-muted/80 transition-colors"
-                >
-                  {child.classroomId
-                    ? "Reassign Classroom"
-                    : "Assign Classroom"}
-                </button>
-              )}
-              <button
-                onClick={() => openDrawer(child.id)}
-                className="flex items-center gap-1 rounded-md bg-primary/10 px-3 py-1.5 text-xs font-medium text-primary hover:bg-primary/20 transition-colors"
-              >
-                <MessageSquare className="size-3.5" /> Message Guardians
-              </button>
-            </div>
-          )}
+
           {child.status === "SUSPENDED" && (
-            <>
-              <span className="text-xs text-muted-foreground mr-2">
-                {child.suspensionReason}
-              </span>
+            <div className="flex flex-wrap items-center gap-2">
               <button
                 onClick={() => reactivate()}
                 disabled={isReactivating}
-                className="flex items-center gap-1 rounded-md bg-primary/10 px-3 py-1.5 text-xs font-medium text-primary hover:bg-primary/20 transition-colors disabled:opacity-50"
+                className="inline-flex items-center gap-1.5 rounded-md bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground transition-colors hover:bg-primary/90 disabled:opacity-50"
               >
-                <PlayCircle className="size-3.5" /> Reactivate
+                <PlayCircle className="size-3.5" />
+                {isReactivating ? "Reactivating…" : "Reactivate"}
               </button>
+              {child.suspensionReason && (
+                <span className="text-xs text-muted-foreground">
+                  Reason: {child.suspensionReason}
+                </span>
+              )}
+            </div>
+          )}
+
+          {(child.status === "ENROLLED" || child.status === "WAITLISTED") && (
+            <>
+              {!isAssignClassroomOpen && (
+                <button
+                  onClick={() => setIsAssignClassroomOpen(true)}
+                  className="inline-flex items-center gap-1.5 rounded-md border border-border bg-background px-3 py-1.5 text-xs font-medium text-foreground transition-colors hover:bg-muted"
+                >
+                  {child.classroomId ? "Reassign Classroom" : "Assign Classroom"}
+                </button>
+              )}
+
+              <div className="ml-auto flex flex-wrap items-center gap-2">
+                <button
+                  onClick={() => openDrawer(child.id)}
+                  className="inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium text-primary transition-colors hover:bg-primary/10"
+                >
+                  <MessageSquare className="size-3.5" /> Message Guardians
+                </button>
+                <Link
+                  href={`${basePath}/${childId}/gallery`}
+                  className="inline-flex items-center gap-1.5 rounded-md border border-border bg-background px-3 py-1.5 text-xs font-medium text-foreground transition-colors hover:bg-muted"
+                >
+                  <Images className="size-3.5" /> View Gallery
+                </Link>
+              </div>
             </>
           )}
         </div>
 
+        {/* Classroom assignment panel */}
+        {isAssignClassroomOpen && (
+          <div className="flex flex-col gap-2 border-t border-border px-5 py-3 sm:flex-row sm:items-center sm:px-6">
+            <select
+              value={selectedClassroomId}
+              onChange={(e) => setSelectedClassroomId(e.target.value)}
+              disabled={isAssigning}
+              className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm sm:w-auto sm:flex-1"
+            >
+              <option value="">Select classroom</option>
+              {(branchClassrooms?.data || []).map((c: any) => (
+                <option key={c.id} value={c.id}>
+                  {c.name} ({c._count?.children ?? 0}/{c.legalCapacity})
+                </option>
+              ))}
+            </select>
+            <div className="flex gap-2">
+              <button
+                onClick={() => assign()}
+                disabled={isAssigning || !selectedClassroomId}
+                className="flex-1 rounded-md bg-primary px-3 py-2 text-xs font-medium text-primary-foreground transition-colors hover:bg-primary/90 disabled:opacity-50 sm:flex-none"
+              >
+                {isAssigning ? "Assigning…" : "Confirm"}
+              </button>
+              <button
+                onClick={() => setIsAssignClassroomOpen(false)}
+                className="flex-1 rounded-md border border-border px-3 py-2 text-xs font-medium text-muted-foreground transition-colors hover:bg-muted sm:flex-none"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Medical / allergy alert */}
         {(child.medicalNotes || child.allergies) && (
-          <div className="mt-4 grid grid-cols-2 gap-4 text-sm bg-muted/20 p-4 rounded-md">
-            {child.allergies && (
-              <div>
-                <p className="font-medium text-foreground">Allergies</p>
-                <p className="text-muted-foreground">{child.allergies}</p>
+          <div className="border-t border-border bg-amber-500/5 px-5 py-4 sm:px-6">
+            <div className="flex items-start gap-2">
+              <AlertTriangle className="mt-0.5 size-4 shrink-0 text-amber-600 dark:text-amber-400" />
+              <div className="grid flex-1 grid-cols-1 gap-3 text-sm sm:grid-cols-2">
+                {child.allergies && (
+                  <div>
+                    <p className="font-medium text-foreground">Allergies</p>
+                    <p className="text-muted-foreground">{child.allergies}</p>
+                  </div>
+                )}
+                {child.medicalNotes && (
+                  <div>
+                    <p className="font-medium text-foreground">Medical notes</p>
+                    <p className="text-muted-foreground">{child.medicalNotes}</p>
+                  </div>
+                )}
               </div>
-            )}
-            {child.medicalNotes && (
-              <div>
-                <p className="font-medium text-foreground">Medical notes</p>
-                <p className="text-muted-foreground">{child.medicalNotes}</p>
-              </div>
-            )}
+            </div>
           </div>
         )}
       </div>
 
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+      {/* Content grid */}
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-5">
         {/* Linked Guardians */}
-        <div className="rounded-lg border border-border bg-card p-6 h-fit">
+        <div className="rounded-xl border border-border bg-card p-5 sm:p-6 lg:col-span-2">
           <div className="mb-4 flex items-center justify-between">
-            <h3 className="text-base font-semibold text-foreground">
-              Guardians
-            </h3>
+            <h3 className="text-base font-semibold text-foreground">Guardians</h3>
             <button
               onClick={() => setIsLinkOpen(true)}
-              className="flex items-center gap-2 rounded-md bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground hover:bg-primary/90 transition-colors"
+              className="inline-flex items-center gap-1.5 rounded-md bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground transition-colors hover:bg-primary/90"
             >
-              <UserPlus className="size-3.5" /> Link Guardian
+              <UserPlus className="size-3.5" /> Link
             </button>
           </div>
+
           {!child.guardians || child.guardians.length === 0 ? (
-            <p className="text-sm text-muted-foreground">
-              No guardians linked yet.
-            </p>
+            <div className="flex flex-col items-center justify-center rounded-lg border border-dashed border-border py-10 text-center">
+              <p className="text-sm text-muted-foreground">No guardians linked yet.</p>
+            </div>
           ) : (
             <ul className="divide-y divide-border">
               {child.guardians.map((g) => (
-                <li
-                  key={g.id}
-                  className="flex items-center justify-between py-3 text-sm"
-                >
-                  <div>
-                    <p className="font-medium text-foreground">{g.user.name}</p>
-                    <p className="text-xs text-muted-foreground">
-                      {g.user.email} · {g.relationship}
-                    </p>
+                <li key={g.id} className="flex items-center justify-between gap-3 py-3">
+                  <div className="flex min-w-0 items-center gap-3">
+                    <div className="flex size-9 shrink-0 items-center justify-center rounded-full bg-muted text-xs font-medium text-foreground">
+                      {g.user.name?.slice(0, 2).toUpperCase()}
+                    </div>
+                    <div className="min-w-0">
+                      <p className="truncate text-sm font-medium text-foreground">
+                        {g.user.name}
+                      </p>
+                      <p className="truncate text-xs text-muted-foreground">
+                        {g.user.email} · {g.relationship}
+                      </p>
+                    </div>
                   </div>
-                  <div className="flex items-center gap-3">
+                  <div className="flex shrink-0 items-center gap-2">
                     {g.isPrimary && (
-                      <span className="rounded-md bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary">
+                      <span className="hidden rounded-full bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary sm:inline">
                         Primary
                       </span>
                     )}
                     <button
                       onClick={() => removeGuardian(g.id)}
-                      className="text-xs text-destructive hover:underline"
+                      className="rounded-md p-1.5 text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive"
+                      aria-label={`Remove ${g.user.name}`}
+                      title="Remove guardian"
                     >
-                      Remove
+                      <XIcon className="size-3.5" />
                     </button>
                   </div>
                 </li>
@@ -312,33 +373,19 @@ export default function ChildDetailView({
           )}
         </div>
 
-        {/* Display Attendance Timeline if Enrolled */}
+        {/* Attendance Timeline */}
         {child.status === "ENROLLED" && (
-          <GuardianAttendanceHistory childId={child.id} />
+          <div className="lg:col-span-3">
+            <GuardianAttendanceHistory childId={child.id} />
+          </div>
         )}
       </div>
 
       {/* Modals */}
-      <LinkGuardianModal
-        isOpen={isLinkOpen}
-        onClose={() => setIsLinkOpen(false)}
-        child={child}
-      />
-      <ApproveChildModal
-        isOpen={isApproveOpen}
-        onClose={() => setIsApproveOpen(false)}
-        child={child}
-      />
-      <RejectChildModal
-        isOpen={isRejectOpen}
-        onClose={() => setIsRejectOpen(false)}
-        child={child}
-      />
-      <SuspendChildModal
-        isOpen={isSuspendOpen}
-        onClose={() => setIsSuspendOpen(false)}
-        child={child}
-      />
+      <LinkGuardianModal isOpen={isLinkOpen} onClose={() => setIsLinkOpen(false)} child={child} />
+      <ApproveChildModal isOpen={isApproveOpen} onClose={() => setIsApproveOpen(false)} child={child} />
+      <RejectChildModal isOpen={isRejectOpen} onClose={() => setIsRejectOpen(false)} child={child} />
+      <SuspendChildModal isOpen={isSuspendOpen} onClose={() => setIsSuspendOpen(false)} child={child} />
     </div>
   );
 }
