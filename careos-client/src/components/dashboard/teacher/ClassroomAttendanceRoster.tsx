@@ -16,6 +16,7 @@ import {
   Utensils,
   Moon,
   MessageSquare,
+  Images,
 } from "lucide-react";
 import {
   getCurrentAttendance,
@@ -32,6 +33,7 @@ import TeacherTimelineLoggerModal from "../timeline/TeacherTimelineLoggerModal";
 import { useChat } from "@/components/providers/ChatContext";
 
 import { addOfflineAction } from "@/utils/offlineQueue.util";
+import Link from "next/link";
 
 export default function ClassroomAttendanceRoster({
   classroomId,
@@ -278,7 +280,7 @@ export default function ClassroomAttendanceRoster({
                   </div>
 
                   {/* Actions Container */}
-                  <div className="flex items-center gap-2 mt-3 sm:mt-0 ml-12 sm:ml-0">
+                  <div className="flex items-center gap-2 mt-3 sm:mt-0 ml-12 sm:ml-0 flex-wrap">
                     {isPresent && (
                       <button
                         onClick={() => setLoggingActivityFor(c)}
@@ -306,6 +308,14 @@ export default function ClassroomAttendanceRoster({
                       <History className="size-3.5" />
                       History
                     </button>
+                    <Link
+                      href={`/teacher/dashboard/children/${c.id}/gallery`}
+                      className="flex items-center gap-1.5 rounded-md border border-border bg-background px-3 py-1.5 text-xs font-medium text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
+                    >
+                      <Images className="size-3.5" />
+                      Gallery
+                    </Link>
+
                     <button
                       onClick={(e) => {
                         e.stopPropagation();

@@ -187,7 +187,7 @@ Group layout: persistent sidebar + header. Access is gated by RBAC middleware ch
 | **Direct Messaging** | `app/(dashboard)/guardian/messages/` | ✅ Real-time chat, role-aware inbox |
 | **Read Receipts** | `components/chat/ChatWindow.tsx` | ✅ Seen indicators, unread badges |
 | **Emergency Broadcasts** | `app/(dashboard)/center-admin/broadcasts/` | ✅ Priority-tagged alert composer |
-| **Encrypted Gallery** | `app/(dashboard)/guardian/gallery/` | ⏳ Planned — pending signed-URL security design |
+| **Encrypted Gallery** | `app/(dashboard)/guardian/gallery/` | ✅ Planned — pending signed-URL security design |
 | **Billing Portal** | `app/(dashboard)/guardian/billing/` | ⏳ Planned |
 | **Split-Custody Payments** | `app/(dashboard)/guardian/billing/split/` | ⏳ Planned |
 | **Compliance PDF Generator** | `app/(dashboard)/owner/compliance/` | ⏳ Planned |
