@@ -8,6 +8,7 @@ import {
   MessageSquare, X, ChevronLeft, Loader2, User, Plus,
   Users, ShieldAlert, MessageCircle, Inbox, Search
 } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "sonner";
 import { useSocket } from "@/providers/SocketProvider";
 import { useChat } from "@/components/providers/ChatContext";
@@ -24,6 +25,30 @@ import Image from "next/image";
 type TabType = "all" | "direct" | "teams" | "guardians";
 type ContactTabType = "direct" | "teams";
 
+const MAIN_TABS: { key: TabType; label: string; icon: any }[] = [
+  { key: "all", label: "All", icon: Inbox },
+  { key: "direct", label: "Direct", icon: MessageCircle },
+  { key: "teams", label: "Teams", icon: Users },
+  { key: "guardians", label: "Guardians", icon: ShieldAlert },
+];
+
+const CONTACT_TABS: { key: ContactTabType; label: string; icon: any }[] = [
+  { key: "direct", label: "Direct", icon: User },
+  { key: "teams", label: "Teams", icon: Users },
+];
+
+function RowSkeleton() {
+  return (
+    <div className="flex items-center gap-4 p-3">
+      <div className="size-11 shrink-0 animate-pulse rounded-full bg-muted" />
+      <div className="flex-1 space-y-2">
+        <div className="h-3 w-2/3 animate-pulse rounded bg-muted" />
+        <div className="h-2.5 w-4/5 animate-pulse rounded bg-muted/70" />
+      </div>
+    </div>
+  );
+}
+
 export default function MessagingDrawer({
   currentUserId,
   currentUserRole,
@@ -37,15 +62,14 @@ export default function MessagingDrawer({
   const router = useRouter();
   const pathname = usePathname();
 
-  // FIX: Properly handle URL cleanup to prevent Next.js 404 errors
   useEffect(() => {
     if (searchParams.get("action") === "open-chat") {
-      openDrawer(); 
-      
+      openDrawer();
+
       const params = new URLSearchParams(searchParams.toString());
       params.delete("action");
+
       
-      // If params are empty, route cleanly to the pathname, otherwise append params
       const newUrl = params.toString() ? `${pathname}?${params.toString()}` : pathname;
       router.replace(newUrl, { scroll: false });
     }
@@ -56,7 +80,7 @@ export default function MessagingDrawer({
   const [showContacts, setShowContacts] = useState(false);
   const [activeTab, setActiveTab] = useState<TabType>("all");
   const [contactTab, setContactTab] = useState<ContactTabType>("direct");
-  const [searchQuery, setSearchQuery] = useState(""); // <-- Search State added
+  const [searchQuery, setSearchQuery] = useState(""); 
 
   const { socket, isConnected } = useSocket();
   const queryClient = useQueryClient();
@@ -96,7 +120,7 @@ export default function MessagingDrawer({
     onSuccess: (res) => {
       setActiveConv(res.data);
       setShowContacts(false);
-      setSearchQuery(""); // Reset search on start
+      setSearchQuery(""); 
       queryClient.invalidateQueries({ queryKey: ["my-conversations"] });
     },
     onError: (err) => console.error("Failed to start DM", err),
@@ -167,19 +191,19 @@ export default function MessagingDrawer({
   const handleClose = () => {
     setActiveConv(null);
     setShowContacts(false);
-    setSearchQuery(""); // Reset search on close
+    setSearchQuery(""); 
     closeDrawer();
   };
 
   const handleOpenContacts = () => {
     setShowContacts(true);
-    setSearchQuery(""); // Reset search when toggling view
+    setSearchQuery("");
   };
 
   const handleBackToConversations = () => {
     setActiveConv(null);
     setShowContacts(false);
-    setSearchQuery(""); // Reset search when going back
+    setSearchQuery(""); 
   };
 
   const renderConversationButton = (conv: any) => {
@@ -202,40 +226,46 @@ export default function MessagingDrawer({
           setActiveConv(conv);
           setSearchQuery("");
         }}
-        className="w-full flex items-center gap-4 p-3 hover:bg-muted rounded-xl transition-colors text-left"
+        className="flex w-full items-center gap-3.5 rounded-2xl p-3 text-left transition-colors hover:bg-muted"
       >
         {displayPhoto ? (
-          <Image src={displayPhoto} alt="Profile" width={44} height={44} className="size-11 rounded-full object-cover shrink-0 border border-border" />
+          <Image src={displayPhoto} alt="Profile" width={46} height={46} className="size-[46px] shrink-0 rounded-full border border-border object-cover" />
         ) : (
-          <div className="flex size-11 items-center justify-center rounded-full bg-primary/10 text-primary shrink-0">
+          <div className="flex size-[46px] shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary">
             {isClassroomGroup ? <Users className="size-5" /> : <User className="size-5" />}
           </div>
         )}
         <div className="flex-1 overflow-hidden">
-          <div className="flex justify-between items-center mb-0.5">
-            <span className={`text-sm truncate ${hasUnread ? "font-bold text-foreground" : "font-semibold text-foreground"}`}>
+          <div className="mb-0.5 flex items-center justify-between gap-2">
+            <span className={`truncate text-sm ${hasUnread ? "font-bold text-foreground" : "font-semibold text-foreground"}`}>
               {!isDM && !isClassroomGroup && !isGuardian && <span className="font-normal text-muted-foreground">Regarding: </span>}
               {displayTitle}
             </span>
             {lastMsg && (
-              <span 
+              <span
                 suppressHydrationWarning
-                className={`text-[10px] whitespace-nowrap ml-2 ${hasUnread ? "font-bold text-primary" : "text-muted-foreground"}`}
+                className={`shrink-0 whitespace-nowrap text-[10px] ${hasUnread ? "font-bold text-primary" : "text-muted-foreground"}`}
               >
-                {new Date(lastMsg.createdAt).toLocaleTimeString("en-US", { 
-                  hour: "2-digit", minute: "2-digit" 
+                {new Date(lastMsg.createdAt).toLocaleTimeString("en-US", {
+                  hour: "2-digit", minute: "2-digit"
                 })}
               </span>
             )}
           </div>
-          <p className={`text-xs truncate ${hasUnread ? "font-semibold text-foreground" : "text-muted-foreground"}`}>
+          <p className={`truncate text-xs ${hasUnread ? "font-semibold text-foreground" : "text-muted-foreground"}`}>
             {lastMsg ? (
-              lastMsg.isDeleted ? <span className="italic">Message removed</span> : <><span className="opacity-75">{senderName}: </span>{lastMsg.content}</>
-            ) : "Start a conversation"}
+              lastMsg.isDeleted ? (
+                <span className="italic opacity-80">Message removed</span>
+              ) : (
+                <><span className="opacity-75">{senderName}: </span>{lastMsg.content}</>
+              )
+            ) : (
+              <span className="italic opacity-70">Start a conversation</span>
+            )}
           </p>
         </div>
         {hasUnread && (
-          <span className="flex size-5 shrink-0 items-center justify-center rounded-full bg-primary text-[10px] font-bold text-primary-foreground">
+          <span className="flex h-5 min-w-[20px] shrink-0 items-center justify-center rounded-full bg-primary px-1.5 text-[10px] font-bold text-primary-foreground shadow-sm">
             {conv._count.messages}
           </span>
         )}
@@ -243,10 +273,9 @@ export default function MessagingDrawer({
     );
   };
 
-  // Filter Conversations based on search
   const displayedConversations = (() => {
-    const base = isGuardian 
-      ? sortedConversations 
+    const base = isGuardian
+      ? sortedConversations
       : (() => {
           switch (activeTab) {
             case "direct": return sortedConversations.filter((c: any) => c.isDirectMessage);
@@ -258,7 +287,7 @@ export default function MessagingDrawer({
 
     if (!searchQuery) return base;
     const q = searchQuery.toLowerCase();
-    
+
     return base.filter((conv: any) => {
       const isClassroomGroup = !!conv.classroom;
       const isDM = conv.isDirectMessage;
@@ -268,185 +297,299 @@ export default function MessagingDrawer({
     });
   })();
 
-  // Filter Contacts based on search
-  const filteredClassrooms = contactsData?.classrooms?.filter((room: any) => 
+  const filteredClassrooms = contactsData?.classrooms?.filter((room: any) =>
     room.name.toLowerCase().includes(searchQuery.toLowerCase())
   ) || [];
 
-  const filteredContacts = contactsData?.contacts?.filter((contact: any) => 
+  const filteredContacts = contactsData?.contacts?.filter((contact: any) =>
     contact.name.toLowerCase().includes(searchQuery.toLowerCase())
   ) || [];
 
+
+  const headerAvatar = (() => {
+    if (showContacts || !activeConv) return null;
+    if (activeConv.classroom) {
+      return (
+        <div className="flex size-9 items-center justify-center rounded-full bg-primary/10 text-primary">
+          <Users className="size-4" />
+        </div>
+      );
+    }
+    if (activeConv.isDirectMessage) {
+      const partner = activeConv.participants?.find((p: any) => p.id !== currentUserId);
+      return partner?.image ? (
+        <Image src={partner.image} alt={partner.name} width={36} height={36} className="size-9 rounded-full border border-border object-cover" />
+      ) : (
+        <div className="flex size-9 items-center justify-center rounded-full bg-primary/10 text-primary">
+          <User className="size-4" />
+        </div>
+      );
+    }
+    return activeConv.child?.photoUrl ? (
+      <Image src={activeConv.child.photoUrl} alt="Child" width={36} height={36} className="size-9 rounded-full border border-border object-cover" />
+    ) : (
+      <div className="flex size-9 items-center justify-center rounded-full bg-primary/10 text-primary">
+        <User className="size-4" />
+      </div>
+    );
+  })();
+
   return (
     <>
-      <button onClick={() => openDrawer()} className="relative p-2 rounded-full hover:bg-muted transition-colors focus:outline-none">
+      <motion.button
+        whileTap={{ scale: 0.9 }}
+        onClick={() => openDrawer()}
+        className="relative rounded-full p-2 transition-colors hover:bg-muted focus:outline-none"
+      >
         <MessageSquare className="size-5 text-muted-foreground hover:text-foreground" />
         {totalUnread > 0 ? (
-          <span className="absolute -top-1 -right-1 flex h-4 min-w-[16px] items-center justify-center rounded-full bg-destructive px-1 text-[10px] font-bold text-white border-2 border-background shadow-sm">
+          <span className="absolute -right-1 -top-1 flex h-4 min-w-[16px] items-center justify-center rounded-full border-2 border-background bg-destructive px-1 text-[10px] font-bold text-white shadow-sm">
             {totalUnread}
           </span>
         ) : isConnected && (
-          <span className="absolute top-1 right-1 size-2.5 rounded-full bg-emerald-500 border-2 border-background"></span>
+          <span className="absolute right-1 top-1 size-2.5 rounded-full border-2 border-background bg-emerald-500"></span>
         )}
-      </button>
+      </motion.button>
 
-      {isDrawerOpen && (
-        <div className="fixed inset-0 z-50 flex justify-end bg-background/80 backdrop-blur-sm">
-          <div className="w-full max-w-md h-full bg-card border-l border-border shadow-2xl flex flex-col animate-in slide-in-from-right duration-300">
-            <div className="flex items-center justify-between p-4 border-b border-border bg-muted/10">
-              <div className="flex items-center gap-2">
-                {(activeConv || showContacts) && !targetChildId && (
-                  <button onClick={handleBackToConversations} className="p-1 hover:bg-muted rounded-md transition-colors">
-                    <ChevronLeft className="size-5" />
-                  </button>
-                )}
-                <h2 className="font-semibold text-lg flex items-center gap-2">
-                  {showContacts ? "New Message" : activeConv ? (
-                    activeConv.classroom ? `${activeConv.classroom.name} Team` : activeConv.isDirectMessage ? (
-                      activeConv.participants?.find((p: any) => p.id !== currentUserId)?.name || "Direct Message"
-                    ) : (
-                      <>
-                        {activeConv.child?.photoUrl ? (
-                          <Image src={activeConv.child.photoUrl} alt="Child" width={24} height={24} className="size-6 rounded-full object-cover" />
-                        ) : (
-                          <div className="flex size-6 items-center justify-center rounded-full bg-primary/10 text-primary shrink-0"><User className="size-3" /></div>
-                        )}
-                        {isGuardian ? activeConv.child?.firstName : `Regarding: ${activeConv.child?.firstName}`}
-                      </>
-                    )
-                  ) : isGuardian ? "Messages about your children" : "Messages"}
-                </h2>
-              </div>
-
-              <div className="flex items-center gap-1">
-                {!activeConv && !showContacts && !isGuardian && (
-                  <button onClick={handleOpenContacts} className="p-2 rounded-md hover:bg-muted transition-colors text-primary" title="New Message">
-                    <Plus className="size-5" />
-                  </button>
-                )}
-                <button onClick={handleClose} className="p-2 rounded-md hover:bg-muted transition-colors">
-                  <X className="size-5" />
-                </button>
-              </div>
-            </div>
-
-            <div className="flex-1 overflow-hidden flex flex-col">
-              {isInitializing ? (
-                <div className="flex h-full items-center justify-center"><Loader2 className="size-6 animate-spin text-muted-foreground" /></div>
-              ) : activeConv ? (
-                <ChatWindow conversationId={activeConv.id} currentUserId={currentUserId} />
-              ) : showContacts && !isGuardian ? (
-                <div className="flex-1 flex flex-col overflow-hidden">
-                  <div className="flex border-b border-border">
-                    <button onClick={() => setContactTab("direct")} className={`flex-1 flex items-center justify-center gap-1.5 py-3 text-xs font-semibold tracking-wide transition-colors ${contactTab === "direct" ? "border-b-2 border-primary text-primary" : "text-muted-foreground hover:text-foreground"}`}>
-                      <User className="size-3.5" /> Direct
+      <AnimatePresence>
+        {isDrawerOpen && (
+          <motion.div
+            key="overlay"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.2 }}
+            className="fixed inset-0 z-50 flex justify-end bg-background/80 backdrop-blur-sm"
+            onClick={(e) => {
+              if (e.target === e.currentTarget) handleClose();
+            }}
+          >
+            <motion.div
+              initial={{ x: "100%" }}
+              animate={{ x: 0 }}
+              exit={{ x: "100%" }}
+              transition={{ type: "spring", stiffness: 320, damping: 32 }}
+              onClick={(e) => e.stopPropagation()}
+              className="flex h-full w-full max-w-md flex-col border-l border-border bg-card shadow-2xl"
+            >
+              <div className="flex items-center justify-between border-b border-border bg-card px-4 py-3.5">
+                <div className="flex min-w-0 items-center gap-2.5">
+                  {(activeConv || showContacts) && !targetChildId && (
+                    <button onClick={handleBackToConversations} className="shrink-0 rounded-full p-1.5 transition-colors hover:bg-muted">
+                      <ChevronLeft className="size-5" />
                     </button>
-                    <button onClick={() => setContactTab("teams")} className={`flex-1 flex items-center justify-center gap-1.5 py-3 text-xs font-semibold tracking-wide transition-colors ${contactTab === "teams" ? "border-b-2 border-primary text-primary" : "text-muted-foreground hover:text-foreground"}`}>
-                      <Users className="size-3.5" /> Teams
-                    </button>
-                  </div>
-                  
-                  {/* Search Bar for Contacts */}
-                  <div className="p-2 border-b border-border bg-card/50">
-                    <div className="relative">
-                      <Search className="absolute left-2.5 top-2.5 size-4 text-muted-foreground" />
-                      <input
-                        type="text"
-                        placeholder="Search contacts..."
-                        value={searchQuery}
-                        onChange={(e) => setSearchQuery(e.target.value)}
-                        className="w-full h-9 pl-9 pr-4 bg-background border border-input rounded-md text-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary"
-                      />
-                    </div>
-                  </div>
-
-                  <div className="flex-1 overflow-y-auto p-2">
-                    {isLoadingContacts ? (
-                      <div className="flex justify-center p-8"><Loader2 className="size-6 animate-spin text-muted-foreground" /></div>
-                    ) : contactTab === "teams" ? (
-                      filteredClassrooms.length > 0 ? (
-                        filteredClassrooms.map((room: any) => (
-                          <button key={room.id} disabled={isStartingDM} onClick={() => { startClassroomMessage(room.id).then((res) => { setActiveConv(res.data); setShowContacts(false); setSearchQuery(""); }); }} className="w-full flex items-center gap-4 p-3 hover:bg-muted rounded-xl transition-colors text-left">
-                            <div className="flex size-10 items-center justify-center rounded-full bg-primary/10 text-primary shrink-0"><Users className="size-5" /></div>
-                            <div className="flex-1">
-                              <span className="font-semibold text-sm">{room.name} Team</span>
-                              <span className="block text-xs text-muted-foreground">Group Chat</span>
-                            </div>
-                          </button>
-                        ))
-                      ) : <div className="text-center p-8 text-sm text-muted-foreground">No classroom teams found.</div>
-                    ) : filteredContacts.length > 0 ? (
-                      filteredContacts.map((contact: any) => (
-                        <button key={contact.id} disabled={isStartingDM} onClick={() => startDM(contact.id)} className="w-full flex items-center gap-4 p-3 hover:bg-muted rounded-xl transition-colors text-left">
-                          {contact.image ? <Image src={contact.image} alt={contact.name} width={40} height={40} className="size-10 rounded-full object-cover shrink-0" /> : <div className="flex size-10 items-center justify-center rounded-full bg-primary/10 text-primary shrink-0"><User className="size-5" /></div>}
-                          <div className="flex-1">
-                            <div className="flex items-center gap-2">
-                              <span className="font-semibold text-sm">{contact.name}</span>
-                              {contact.isOnline && <span className="size-1.5 rounded-full bg-emerald-500"></span>}
-                            </div>
-                            <span className="text-xs text-muted-foreground">{contact.role.replace("_", " ")}</span>
-                          </div>
-                        </button>
-                      ))
-                    ) : <div className="text-center p-8 text-sm text-muted-foreground">No contacts found.</div>}
-                  </div>
-                </div>
-              ) : (
-                <div className="flex-1 flex flex-col overflow-hidden">
-                  {!isGuardian && (
-                    <div className="flex overflow-x-auto border-b border-border bg-card z-10 sticky top-0 custom-scrollbar">
-                      <button onClick={() => setActiveTab("all")} className={`min-w-[75px] flex-1 flex items-center justify-center gap-1.5 py-3 text-xs font-semibold tracking-wide transition-colors ${activeTab === "all" ? "border-b-2 border-primary text-primary" : "text-muted-foreground hover:text-foreground"}`}>
-                        <Inbox className="size-3.5" /> All
-                      </button>
-                      <button onClick={() => setActiveTab("direct")} className={`min-w-[75px] flex-1 flex items-center justify-center gap-1.5 py-3 text-xs font-semibold tracking-wide transition-colors ${activeTab === "direct" ? "border-b-2 border-primary text-primary" : "text-muted-foreground hover:text-foreground"}`}>
-                        <MessageCircle className="size-3.5" /> Direct
-                      </button>
-                      <button onClick={() => setActiveTab("teams")} className={`min-w-[75px] flex-1 flex items-center justify-center gap-1.5 py-3 text-xs font-semibold tracking-wide transition-colors ${activeTab === "teams" ? "border-b-2 border-primary text-primary" : "text-muted-foreground hover:text-foreground"}`}>
-                        <Users className="size-3.5" /> Teams
-                      </button>
-                      <button onClick={() => setActiveTab("guardians")} className={`min-w-[90px] flex-1 flex items-center justify-center gap-1.5 py-3 text-xs font-semibold tracking-wide transition-colors ${activeTab === "guardians" ? "border-b-2 border-primary text-primary" : "text-muted-foreground hover:text-foreground"}`}>
-                        <ShieldAlert className="size-3.5" /> Guardians
-                      </button>
-                    </div>
                   )}
+                  {headerAvatar}
+                  <h2 className="truncate font-display text-base font-semibold leading-tight text-foreground">
+                    {showContacts ? "New Message" : activeConv ? (
+                      activeConv.classroom ? `${activeConv.classroom.name} Team` : activeConv.isDirectMessage ? (
+                        activeConv.participants?.find((p: any) => p.id !== currentUserId)?.name || "Direct Message"
+                      ) : (
+                        isGuardian ? activeConv.child?.firstName : `Regarding: ${activeConv.child?.firstName}`
+                      )
+                    ) : isGuardian ? "Messages about your children" : "Messages"}
+                  </h2>
+                </div>
 
-                  {/* Search Bar for Conversations */}
-                  <div className="p-2 border-b border-border bg-card/50">
-                    <div className="relative">
-                      <Search className="absolute left-2.5 top-2.5 size-4 text-muted-foreground" />
-                      <input
-                        type="text"
-                        placeholder="Search conversations..."
-                        value={searchQuery}
-                        onChange={(e) => setSearchQuery(e.target.value)}
-                        className="w-full h-9 pl-9 pr-4 bg-background border border-input rounded-md text-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary"
-                      />
+                <div className="flex shrink-0 items-center gap-1">
+                  {!activeConv && !showContacts && !isGuardian && (
+                    <button
+                      onClick={handleOpenContacts}
+                      title="New Message"
+                      className="flex size-8 items-center justify-center rounded-full bg-primary/10 text-primary transition-colors hover:bg-primary/20"
+                    >
+                      <Plus className="size-4" />
+                    </button>
+                  )}
+                  <button onClick={handleClose} className="flex size-8 items-center justify-center rounded-full transition-colors hover:bg-muted">
+                    <X className="size-4" />
+                  </button>
+                </div>
+              </div>
+
+              <div className="flex flex-1 flex-col overflow-hidden">
+                {isInitializing ? (
+                  <div className="flex h-full items-center justify-center"><Loader2 className="size-6 animate-spin text-muted-foreground" /></div>
+                ) : activeConv ? (
+                  <ChatWindow conversationId={activeConv.id} currentUserId={currentUserId} />
+                ) : showContacts && !isGuardian ? (
+                  <div className="flex flex-1 flex-col overflow-hidden">
+                    <div className="relative flex gap-1 bg-card p-2">
+                      {CONTACT_TABS.map((tab) => (
+                        <button
+                          key={tab.key}
+                          onClick={() => setContactTab(tab.key)}
+                          className={`relative flex flex-1 items-center justify-center gap-1.5 rounded-full py-2 text-xs font-semibold transition-colors ${
+                            contactTab === tab.key ? "text-primary-foreground" : "text-muted-foreground hover:text-foreground"
+                          }`}
+                        >
+                          {contactTab === tab.key && (
+                            <motion.span
+                              layoutId="contactTabPill"
+                              className="absolute inset-0 -z-10 rounded-full bg-primary"
+                              transition={{ type: "spring", stiffness: 400, damping: 32 }}
+                            />
+                          )}
+                          <tab.icon className="size-3.5" /> {tab.label}
+                        </button>
+                      ))}
                     </div>
-                  </div>
 
-                  <div className="flex-1 overflow-y-auto p-2">
-                    {isLoadingConvs ? (
-                      <div className="flex h-full items-center justify-center"><Loader2 className="size-6 animate-spin text-muted-foreground" /></div>
-                    ) : displayedConversations.length === 0 ? (
-                      <div className="flex flex-col h-full items-center justify-center text-center p-8">
-                        <MessageSquare className="size-10 text-muted-foreground/30 mb-3" />
-                        <p className="text-sm font-medium text-foreground">
-                          {searchQuery ? "No results found." : isGuardian ? "No messages yet." : `No ${activeTab} conversations.`}
-                        </p>
-                        {(!searchQuery && !isGuardian) && (
-                          <button onClick={handleOpenContacts} className="mt-4 flex items-center gap-2 text-sm text-primary hover:underline">
-                            <Plus className="size-4" /> Start a new message
+                    <div className="px-3 pb-3">
+                      <div className="relative flex items-center rounded-full bg-muted px-3.5 py-2">
+                        <Search className="size-4 shrink-0 text-muted-foreground" />
+                        <input
+                          type="text"
+                          placeholder="Search contacts…"
+                          value={searchQuery}
+                          onChange={(e) => setSearchQuery(e.target.value)}
+                          className="ml-2.5 flex-1 bg-transparent text-sm placeholder:text-muted-foreground focus-visible:outline-none"
+                        />
+                        {searchQuery && (
+                          <button onClick={() => setSearchQuery("")} className="shrink-0 rounded-full p-1 text-muted-foreground hover:bg-background">
+                            <X className="size-3.5" />
                           </button>
                         )}
                       </div>
-                    ) : displayedConversations.map(renderConversationButton)}
+                    </div>
+
+                    <div className="custom-scrollbar flex-1 overflow-y-auto px-2 pb-2">
+                      {isLoadingContacts ? (
+                        <div className="space-y-1">
+                          {Array.from({ length: 6 }).map((_, i) => <RowSkeleton key={i} />)}
+                        </div>
+                      ) : contactTab === "teams" ? (
+                        filteredClassrooms.length > 0 ? (
+                          filteredClassrooms.map((room: any) => (
+                            <button
+                              key={room.id}
+                              disabled={isStartingDM}
+                              onClick={() => { startClassroomMessage(room.id).then((res) => { setActiveConv(res.data); setShowContacts(false); setSearchQuery(""); }); }}
+                              className="flex w-full items-center gap-3.5 rounded-2xl p-3 text-left transition-colors hover:bg-muted disabled:opacity-60"
+                            >
+                              <div className="flex size-10 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary"><Users className="size-5" /></div>
+                              <div className="flex-1">
+                                <span className="block text-sm font-semibold text-foreground">{room.name} Team</span>
+                                <span className="block text-xs text-muted-foreground">Group Chat</span>
+                              </div>
+                            </button>
+                          ))
+                        ) : (
+                          <div className="flex flex-col items-center gap-2 p-10 text-center">
+                            <div className="flex size-11 items-center justify-center rounded-full bg-muted text-muted-foreground"><Users className="size-5" /></div>
+                            <p className="text-sm text-muted-foreground">No classroom teams found.</p>
+                          </div>
+                        )
+                      ) : filteredContacts.length > 0 ? (
+                        filteredContacts.map((contact: any) => (
+                          <button
+                            key={contact.id}
+                            disabled={isStartingDM}
+                            onClick={() => startDM(contact.id)}
+                            className="flex w-full items-center gap-3.5 rounded-2xl p-3 text-left transition-colors hover:bg-muted disabled:opacity-60"
+                          >
+                            {contact.image ? (
+                              <Image src={contact.image} alt={contact.name} width={40} height={40} className="size-10 shrink-0 rounded-full border border-border object-cover" />
+                            ) : (
+                              <div className="flex size-10 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary"><User className="size-5" /></div>
+                            )}
+                            <div className="flex-1">
+                              <div className="flex items-center gap-1.5">
+                                <span className="text-sm font-semibold text-foreground">{contact.name}</span>
+                                {contact.isOnline && <span className="size-1.5 rounded-full bg-emerald-500" />}
+                              </div>
+                              <span className="text-xs capitalize text-muted-foreground">{contact.role.replace("_", " ").toLowerCase()}</span>
+                            </div>
+                          </button>
+                        ))
+                      ) : (
+                        <div className="flex flex-col items-center gap-2 p-10 text-center">
+                          <div className="flex size-11 items-center justify-center rounded-full bg-muted text-muted-foreground"><User className="size-5" /></div>
+                          <p className="text-sm text-muted-foreground">No contacts found.</p>
+                        </div>
+                      )}
+                    </div>
                   </div>
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-      )}
+                ) : (
+                  <div className="flex flex-1 flex-col overflow-hidden">
+                    {!isGuardian && (
+                      <div className="custom-scrollbar overflow-x-auto bg-card px-2 pt-2">
+                        <div className="relative flex min-w-max gap-1">
+                          {MAIN_TABS.map((tab) => (
+                            <button
+                              key={tab.key}
+                              onClick={() => setActiveTab(tab.key)}
+                              className={`relative flex min-w-[84px] flex-1 items-center justify-center gap-1.5 rounded-full py-2 text-xs font-semibold transition-colors ${
+                                activeTab === tab.key ? "text-primary" : "text-muted-foreground hover:text-foreground"
+                              }`}
+                            >
+                              {activeTab === tab.key && (
+                                <motion.span
+                                  layoutId="mainTabPill"
+                                  className="absolute inset-0 -z-10 rounded-full bg-primary"
+                                  transition={{ type: "spring", stiffness: 400, damping: 32 }}
+                                />
+                              )}
+                              <tab.icon className="size-3.5" /> {tab.label}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    <div className="px-3 py-3">
+                      <div className="relative flex items-center rounded-full bg-muted px-3.5 py-2">
+                        <Search className="size-4 shrink-0 text-muted-foreground" />
+                        <input
+                          type="text"
+                          placeholder="Search conversations…"
+                          value={searchQuery}
+                          onChange={(e) => setSearchQuery(e.target.value)}
+                          className="ml-2.5 flex-1 bg-transparent text-sm placeholder:text-muted-foreground focus-visible:outline-none"
+                        />
+                        {searchQuery && (
+                          <button onClick={() => setSearchQuery("")} className="shrink-0 rounded-full p-1 text-muted-foreground hover:bg-background">
+                            <X className="size-3.5" />
+                          </button>
+                        )}
+                      </div>
+                    </div>
+
+                    <div className="custom-scrollbar flex-1 overflow-y-auto px-2 pb-2">
+                      {isLoadingConvs ? (
+                        <div className="space-y-1">
+                          {Array.from({ length: 6 }).map((_, i) => <RowSkeleton key={i} />)}
+                        </div>
+                      ) : displayedConversations.length === 0 ? (
+                        <div className="flex h-full flex-col items-center justify-center gap-2 p-8 text-center">
+                          <div className="flex size-12 items-center justify-center rounded-full bg-muted text-muted-foreground">
+                            <MessageSquare className="size-5" />
+                          </div>
+                          <p className="text-sm font-medium text-foreground">
+                            {searchQuery ? "No results found." : isGuardian ? "No messages yet." : `No ${activeTab} conversations.`}
+                          </p>
+                          {(!searchQuery && !isGuardian) && (
+                            <button
+                              onClick={handleOpenContacts}
+                              className="mt-2 flex items-center gap-1.5 rounded-full bg-primary/10 px-3.5 py-1.5 text-sm font-medium text-primary transition-colors hover:bg-primary/20"
+                            >
+                              <Plus className="size-3.5" /> Start a new message
+                            </button>
+                          )}
+                        </div>
+                      ) : (
+                        <div className="space-y-0.5">
+                          {displayedConversations.map(renderConversationButton)}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </>
   );
 }

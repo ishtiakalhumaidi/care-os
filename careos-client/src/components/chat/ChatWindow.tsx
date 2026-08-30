@@ -3,7 +3,8 @@
 
 import React, { useEffect, useState, useRef, useMemo } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Send, Loader2, MoreVertical, Edit2, Trash2, Ban, User, Check, CheckCheck } from "lucide-react";
+import { Send, MoreVertical, Edit2, Trash2, Ban, User, Check, CheckCheck, MessageCircle } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
 import { useSocket } from "@/providers/SocketProvider";
 import { getConversationMessages } from "@/services/message.services";
 import Image from "next/image";
@@ -28,6 +29,57 @@ const formatNameWithRole = (name: string, role: string) => {
   return `${firstName} (${formattedRole})`;
 };
 
+// --- Presentational-only helpers (no data fetching, no side effects) ---
+
+const isSameDay = (a: Date, b: Date) =>
+  a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate();
+
+const formatDayLabel = (dateStr: string) => {
+  const d = new Date(dateStr);
+  const today = new Date();
+  const yesterday = new Date();
+  yesterday.setDate(today.getDate() - 1);
+  if (isSameDay(d, today)) return "Today";
+  if (isSameDay(d, yesterday)) return "Yesterday";
+  return d.toLocaleDateString("en-US", {
+    month: "long",
+    day: "numeric",
+    year: d.getFullYear() !== today.getFullYear() ? "numeric" : undefined,
+  });
+};
+
+const GROUP_WINDOW_MS = 5 * 60 * 1000;
+
+function BubbleTail({
+  side,
+  className,
+}: {
+  side: "left" | "right";
+  className?: string;
+}) {
+  return side === "left" ? (
+    <svg
+      width="8"
+      height="8"
+      viewBox="0 0 8 8"
+      className={`absolute -left-[4px] bottom-[2px] ${className}`}
+      fill="currentColor"
+    >
+      <path d="M8 0C8 5 5 8 0 8C3 6 4 3 4 0H8Z" />
+    </svg>
+  ) : (
+    <svg
+      width="8"
+      height="8"
+      viewBox="0 0 8 8"
+      className={`absolute -right-[4px] bottom-[2px] ${className}`}
+      fill="currentColor"
+    >
+      <path d="M0 0C0 5 3 8 8 8C5 6 4 3 4 0H0Z" />
+    </svg>
+  );
+}
+
 export default function ChatWindow({
   conversationId,
   currentUserId,
@@ -40,8 +92,7 @@ export default function ChatWindow({
   const [inputText, setInputText] = useState("");
   const [editingMessageId, setEditingMessageId] = useState<string | null>(null);
   const [activeDropdown, setActiveDropdown] = useState<string | null>(null);
-  
-  // Pagination State
+
   const [limit, setLimit] = useState(50);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
@@ -58,7 +109,6 @@ export default function ChatWindow({
 
   const messages = useMemo(() => data || [], [data]);
 
-
   const baseStatuses = useMemo(() => {
     const statuses: Record<string, { isOnline: boolean; lastActiveAt: string }> = {};
     messages.forEach((msg: any) => {
@@ -72,14 +122,11 @@ export default function ChatWindow({
     return statuses;
   }, [messages, currentUserId]);
 
-  // 2. Live Status: Real-time socket overrides
   const [liveStatuses, setLiveStatuses] = useState<Record<string, { isOnline: boolean; lastActiveAt: string }>>({});
 
-  // 3. Helper to merge the two
   const getParticipantStatus = (userId: string) => {
     return liveStatuses[userId] ?? baseStatuses[userId] ?? { isOnline: false, lastActiveAt: "" };
   };
-  // ---------------------------------
 
   const dmPartner = useMemo(() => {
     if (!isDM) return null;
@@ -91,10 +138,29 @@ export default function ChatWindow({
     return msg?.sender || null;
   }, [messages, currentUserId, isDM, activeConv]);
 
-  // FIX: Smart Scrolling ensures we always snap to bottom on open
+  // Presentational-only: derive dayDivider + grouping flags purely from array indices —
+  // no mutable variable carried across iterations, safe under the React Compiler.
+  const decoratedMessages = useMemo(() => {
+    return messages.map((msg: any, idx: number) => {
+      const prev = idx > 0 ? messages[idx - 1] : null;
+
+      const showDayDivider =
+        !prev || new Date(prev.createdAt).toDateString() !== new Date(msg.createdAt).toDateString();
+
+      const isGrouped =
+        !!prev &&
+        !showDayDivider &&
+        prev.senderId === msg.senderId &&
+        !prev.isDeleted &&
+        !msg.isDeleted &&
+        new Date(msg.createdAt).getTime() - new Date(prev.createdAt).getTime() < GROUP_WINDOW_MS;
+
+      return { ...msg, __showDayDivider: showDayDivider, __isGrouped: isGrouped };
+    });
+  }, [messages]);
+
   const prevMessagesLength = useRef(0);
 
-  // Reset length tracker when changing conversations to force a scroll
   useEffect(() => {
     prevMessagesLength.current = 0;
   }, [conversationId]);
@@ -102,8 +168,6 @@ export default function ChatWindow({
   useEffect(() => {
     if (messages.length > prevMessagesLength.current && limit === 50) {
       const isFirstLoad = prevMessagesLength.current === 0;
-      
-      // Use a tiny timeout to ensure the DOM has fully painted the messages before scrolling
       setTimeout(() => {
         messagesEndRef.current?.scrollIntoView({ behavior: isFirstLoad ? "auto" : "smooth" });
       }, 50);
@@ -216,118 +280,237 @@ export default function ChatWindow({
   };
 
   return (
-    <div className="flex h-full flex-col bg-card relative">
+    <div className="relative flex h-full flex-col bg-card">
       {isDM && dmPartner && (
-        <div className="px-4 py-1.5 border-b border-border flex items-center justify-between shadow-sm z-10 min-h-[36px] bg-card/80 backdrop-blur-sm sticky top-0">
-          <span className="text-[11px] font-medium flex items-center gap-1.5 text-muted-foreground">
-            <span className={`size-1.5 rounded-full ${getParticipantStatus(dmPartner.id).isOnline ? "bg-emerald-500" : "bg-muted-foreground/50"}`}></span>
-            {dmPartner.name}: {formatLastSeen(getParticipantStatus(dmPartner.id).lastActiveAt, getParticipantStatus(dmPartner.id).isOnline)}
+        <div className="sticky top-0 z-20 flex min-h-[56px] items-center justify-between border-b border-border bg-card/95 px-4 py-2.5 backdrop-blur-sm">
+          <div className="flex items-center gap-2.5">
+            <div className="relative">
+              {dmPartner.image ? (
+                <Image src={dmPartner.image} alt={dmPartner.name} width={36} height={36} className="size-9 rounded-full border border-border object-cover" />
+              ) : (
+                <div className="flex size-9 items-center justify-center rounded-full border border-primary/20 bg-primary/10 text-primary">
+                  <User className="size-4" />
+                </div>
+              )}
+              {getParticipantStatus(dmPartner.id).isOnline && (
+                <span className="absolute -bottom-0.5 -right-0.5 flex size-3">
+                  <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-500 opacity-70" />
+                  <span className="relative inline-flex size-3 rounded-full border-2 border-card bg-emerald-500" />
+                </span>
+              )}
+            </div>
+            <div className="flex flex-col leading-tight">
+              <span className="text-sm font-semibold text-foreground">{dmPartner.name}</span>
+              <span className="text-[11px] text-muted-foreground">
+                {formatLastSeen(getParticipantStatus(dmPartner.id).lastActiveAt, getParticipantStatus(dmPartner.id).isOnline)}
+              </span>
+            </div>
+          </div>
+          <span
+            className={`flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[10px] font-medium ${
+              isConnected ? "bg-emerald-500/10 text-emerald-600" : "bg-muted text-muted-foreground"
+            }`}
+          >
+            <span className={`size-1.5 rounded-full ${isConnected ? "bg-emerald-500" : "bg-muted-foreground/50"}`} />
+            {isConnected ? "Live" : "Reconnecting"}
           </span>
         </div>
       )}
 
-      <div ref={scrollContainerRef} className="flex-1 overflow-y-auto p-4 space-y-6 custom-scrollbar">
+      <div
+        ref={scrollContainerRef}
+        className="custom-scrollbar flex-1 overflow-y-auto px-4 py-4"
+        style={{
+          backgroundImage: "radial-gradient(currentColor 1px, transparent 1px)",
+          backgroundSize: "18px 18px",
+          color: "var(--border)",
+          backgroundColor: "var(--background)",
+        }}
+      >
         {isLoading && limit === 50 ? (
-          <div className="flex h-full items-center justify-center"><Loader2 className="size-6 animate-spin text-muted-foreground" /></div>
+          <div className="space-y-3">
+            {[0, 1, 0, 1, 1, 0].map((right, i) => (
+              <div key={i} className={`flex ${right ? "justify-end" : "justify-start"}`}>
+                <div
+                  className={`h-9 animate-pulse rounded-2xl bg-muted ${right ? "w-40 rounded-br-sm" : "w-52 rounded-bl-sm"}`}
+                />
+              </div>
+            ))}
+          </div>
         ) : messages.length === 0 ? (
-          <div className="flex h-full items-center justify-center text-sm text-muted-foreground text-center">Start the conversation...</div>
+          <div className="flex h-full flex-col items-center justify-center gap-2 text-center">
+            <div className="flex size-12 items-center justify-center rounded-full bg-muted text-muted-foreground">
+              <MessageCircle className="size-5" />
+            </div>
+            <p className="text-sm font-medium text-foreground">No messages yet</p>
+            <p className="text-xs text-muted-foreground">Say hello to get things started.</p>
+          </div>
         ) : (
           <>
-            {/* Pagination Load More Button */}
             {messages.length >= limit && (
-              <div className="flex justify-center mb-4">
+              <div className="mb-3 flex justify-center">
                 <button
                   onClick={() => setLimit((prev) => prev + 50)}
                   disabled={isFetching}
-                  className="text-[11px] font-medium text-primary hover:bg-muted/80 flex items-center gap-1.5 bg-muted/50 px-4 py-1.5 rounded-full transition-colors"
+                  className="rounded-full bg-card px-4 py-1.5 text-[11px] font-medium text-primary shadow-sm ring-1 ring-border transition-colors hover:bg-muted disabled:opacity-60"
                 >
-                  {isFetching && limit > 50 ? <Loader2 className="size-3 animate-spin" /> : "Load older messages"}
+                  {isFetching && limit > 50 ? "Loading…" : "Load older messages"}
                 </button>
               </div>
             )}
 
-            {messages.map((msg: any) => {
-              const isMe = msg.senderId === currentUserId;
-              const isSending = msg.id.startsWith("temp-");
-              const isSenderOnline = !isMe && getParticipantStatus(msg.senderId).isOnline;
-              const senderDisplayName = isMe ? "You" : formatNameWithRole(msg.sender?.name, msg.sender?.role);
+            <AnimatePresence initial={false}>
+              {decoratedMessages.map((msg: any) => {
+                const isMe = msg.senderId === currentUserId;
+                const isSending = msg.id.startsWith("temp-");
+                const isSenderOnline = !isMe && getParticipantStatus(msg.senderId).isOnline;
+                const senderDisplayName = isMe ? "You" : formatNameWithRole(msg.sender?.name, msg.sender?.role);
 
-              if (msg.isDeleted) {
-                return (
-                  <div key={msg.id} className={`flex w-full ${isMe ? "justify-end" : "justify-start"} my-2`}>
-                    <div className="rounded-full px-4 py-1.5 text-[11px] italic text-muted-foreground bg-muted/50 border border-border/50 flex items-center gap-1.5">
-                      <Ban className="size-3 opacity-60" /> {isMe ? "You" : msg.sender?.name} removed a message
-                    </div>
+                const dayDivider = msg.__showDayDivider ? (
+                  <div className="my-4 flex items-center justify-center">
+                    <span className="rounded-full bg-card px-3 py-1 text-[11px] font-medium text-muted-foreground shadow-sm ring-1 ring-border">
+                      {formatDayLabel(msg.createdAt)}
+                    </span>
                   </div>
-                );
-              }
+                ) : null;
 
-              return (
-                <div key={msg.id} className={`flex w-full ${isMe ? "justify-end" : "justify-start"} group`}>
-                  {!isMe && (
-                    <div className="relative mr-2 self-end shrink-0 mb-5">
-                      {msg.sender?.image ? (
-                        <Image src={msg.sender.image} alt={msg.sender.name} width={28} height={28} className="size-7 rounded-full object-cover border border-border" />
-                      ) : (
-                        <div className="flex size-7 items-center justify-center rounded-full bg-primary/10 text-primary border border-primary/20"><User className="size-3.5" /></div>
-                      )}
-                      {isSenderOnline && <span className="absolute bottom-0 right-0 size-2.5 rounded-full bg-emerald-500 border-2 border-background shadow-sm"></span>}
-                    </div>
-                  )}
+                if (msg.isDeleted) {
+                  return (
+                    <React.Fragment key={msg.id}>
+                      {dayDivider}
+                      <div className="my-1.5 flex w-full justify-center">
+                        <div className="flex items-center gap-1.5 rounded-full bg-card/80 px-3.5 py-1.5 text-[11px] italic text-muted-foreground ring-1 ring-border/60">
+                          <Ban className="size-3 opacity-60" />
+                          {isMe ? "You" : msg.sender?.name} removed a message
+                        </div>
+                      </div>
+                    </React.Fragment>
+                  );
+                }
 
-                  <div className={`flex flex-col ${isMe ? "items-end" : "items-start"} max-w-[75%]`}>
-                    {!isMe && <span className="text-[10px] text-muted-foreground font-medium ml-1 mb-1">{senderDisplayName}</span>}
-
-                    <div className={`relative flex items-center gap-2 ${isSending ? "opacity-70" : ""}`}>
-                      {isMe && !isSending && (
-                        <div className="relative opacity-0 group-hover:opacity-100 transition-opacity">
-                          <button onClick={() => setActiveDropdown(activeDropdown === msg.id ? null : msg.id)} className="p-1.5 text-muted-foreground hover:bg-muted rounded-full"><MoreVertical className="size-4" /></button>
-                          {activeDropdown === msg.id && (
-                            <div className="absolute right-0 bottom-8 z-10 w-28 rounded-md border border-border bg-popover shadow-md py-1">
-                              <button onClick={() => { setInputText(msg.content); setEditingMessageId(msg.id); setActiveDropdown(null); }} className="flex w-full items-center gap-2 px-3 py-1.5 text-xs hover:bg-muted"><Edit2 className="size-3" /> Edit</button>
-                              <button onClick={() => handleDelete(msg.id)} className="flex w-full items-center gap-2 px-3 py-1.5 text-xs text-destructive hover:bg-destructive/10"><Trash2 className="size-3" /> Delete</button>
-                            </div>
+                return (
+                  <React.Fragment key={msg.id}>
+                    {dayDivider}
+                    <motion.div
+                      initial={isSending ? { opacity: 0, y: 8, scale: 0.98 } : false}
+                      animate={{ opacity: 1, y: 0, scale: 1 }}
+                      transition={{ duration: 0.18, ease: "easeOut" }}
+                      className={`group flex w-full gap-2 ${isMe ? "justify-end" : "justify-start"} ${
+                        msg.__isGrouped ? "mt-0.5" : "mt-3"
+                      }`}
+                    >
+                      {!isMe && (
+                        <div className="relative w-7 shrink-0 self-end">
+                          {!msg.__isGrouped && (
+                            <>
+                              {msg.sender?.image ? (
+                                <Image src={msg.sender.image} alt={msg.sender.name} width={28} height={28} className="size-7 rounded-full border border-border object-cover" />
+                              ) : (
+                                <div className="flex size-7 items-center justify-center rounded-full border border-primary/20 bg-primary/10 text-primary">
+                                  <User className="size-3.5" />
+                                </div>
+                              )}
+                              {isSenderOnline && (
+                                <span className="absolute -bottom-0.5 -right-0.5 size-2.5 rounded-full border-2 border-background bg-emerald-500" />
+                              )}
+                            </>
                           )}
                         </div>
                       )}
 
-                      <div className={`rounded-2xl px-4 py-2.5 text-sm shadow-sm leading-relaxed ${isMe ? "bg-primary text-primary-foreground rounded-br-sm" : "bg-muted text-foreground rounded-bl-sm border border-border/50"}`}>
-                        {msg.content}
-                        {msg.isEdited && <span className="text-[10px] opacity-70 ml-2 italic">(edited)</span>}
-                      </div>
-                    </div>
+                      <div className={`flex max-w-[72%] flex-col ${isMe ? "items-end" : "items-start"}`}>
+                        {!isMe && !msg.__isGrouped && (
+                          <span className="mb-1 ml-1 text-[10px] font-medium text-muted-foreground">{senderDisplayName}</span>
+                        )}
 
-                    <div 
-                    suppressHydrationWarning
-                     className="flex items-center gap-1 mt-1 text-[10px] text-muted-foreground px-1">
-                     {new Date(msg.createdAt).toLocaleTimeString("en-US", { 
-                        hour: "2-digit", minute: "2-digit" 
-                      })}
-                      {isMe && !isSending && (
-                        msg.readAt ? (
-                          <span title="Read" className="flex items-center"><CheckCheck className="size-3.5 text-blue-500 ml-0.5" /></span>
-                        ) : (
-                          <span title="Sent" className="flex items-center"><Check className="size-3.5 ml-0.5" /></span>
-                        )
-                      )}
-                    </div>
-                  </div>
-                </div>
-              );
-            })}
+                        <div className={`relative flex items-center gap-1.5 ${isSending ? "opacity-60" : ""}`}>
+                          {isMe && !isSending && (
+                            <div className="relative opacity-0 transition-opacity group-hover:opacity-100">
+                              <button
+                                onClick={() => setActiveDropdown(activeDropdown === msg.id ? null : msg.id)}
+                                className="rounded-full p-1.5 text-muted-foreground ring-1 ring-transparent hover:bg-muted hover:ring-border"
+                              >
+                                <MoreVertical className="size-3.5" />
+                              </button>
+                              {activeDropdown === msg.id && (
+                                <>
+                                  <div className="fixed inset-0 z-10" onClick={() => setActiveDropdown(null)} />
+                                  <div className="absolute bottom-8 right-0 z-20 w-32 overflow-hidden rounded-xl border border-border bg-popover shadow-lg">
+                                    <button
+                                      onClick={() => {
+                                        setInputText(msg.content);
+                                        setEditingMessageId(msg.id);
+                                        setActiveDropdown(null);
+                                      }}
+                                      className="flex w-full items-center gap-2 px-3.5 py-2 text-xs text-foreground hover:bg-muted"
+                                    >
+                                      <Edit2 className="size-3.5" /> Edit
+                                    </button>
+                                    <button
+                                      onClick={() => handleDelete(msg.id)}
+                                      className="flex w-full items-center gap-2 px-3.5 py-2 text-xs text-destructive hover:bg-destructive/10"
+                                    >
+                                      <Trash2 className="size-3.5" /> Delete
+                                    </button>
+                                  </div>
+                                </>
+                              )}
+                            </div>
+                          )}
+
+                          <div
+                            className={`relative rounded-2xl px-4 py-2.5 text-sm leading-relaxed shadow-sm ${
+                              isMe
+                                ? `bg-primary text-primary-foreground ${!msg.__isGrouped ? "rounded-br-md" : ""}`
+                                : `border border-border/60 bg-muted text-foreground ${!msg.__isGrouped ? "rounded-bl-md" : ""}`
+                            }`}
+                          >
+                            {!msg.__isGrouped && (
+                              <BubbleTail side={isMe ? "right" : "left"} className={isMe ? "text-primary" : "text-muted"} />
+                            )}
+                            {msg.content}
+                            {msg.isEdited && <span className="ml-2 text-[10px] italic opacity-70">(edited)</span>}
+                          </div>
+                        </div>
+
+                        <div suppressHydrationWarning className="mt-1 flex items-center gap-1 px-1 text-[10px] text-muted-foreground">
+                          {new Date(msg.createdAt).toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" })}
+                          {isMe && !isSending && (
+                            msg.readAt ? (
+                              <CheckCheck className="ml-0.5 size-3.5 text-primary" />
+                            ) : (
+                              <Check className="ml-0.5 size-3.5" />
+                            )
+                          )}
+                        </div>
+                      </div>
+                    </motion.div>
+                  </React.Fragment>
+                );
+              })}
+            </AnimatePresence>
           </>
         )}
         <div ref={messagesEndRef} className="h-1" />
       </div>
 
-      <form onSubmit={handleSendMessage} className="border-t border-border p-3 bg-card shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)]">
+      <form onSubmit={handleSendMessage} className="border-t border-border bg-card p-3">
         {editingMessageId && (
-          <div className="flex items-center justify-between mb-2 px-3 text-xs text-primary font-medium bg-primary/5 py-1.5 rounded-md border border-primary/20">
-            <span>Editing message...</span>
-            <button type="button" onClick={() => { setEditingMessageId(null); setInputText(""); }} className="hover:underline">Cancel</button>
+          <div className="mb-2 flex items-center justify-between rounded-lg border border-primary/20 bg-primary/5 px-3 py-1.5 text-xs font-medium text-primary">
+            <span>Editing message…</span>
+            <button
+              type="button"
+              onClick={() => {
+                setEditingMessageId(null);
+                setInputText("");
+              }}
+              className="hover:underline"
+            >
+              Cancel
+            </button>
           </div>
         )}
-        <div className="flex gap-2 items-end">
+        <div className="flex items-end gap-1.5 rounded-3xl border border-input bg-background px-3 py-1.5 shadow-sm focus-within:ring-1 focus-within:ring-primary">
           <textarea
             value={inputText}
             onChange={(e) => setInputText(e.target.value)}
@@ -337,13 +520,17 @@ export default function ChatWindow({
                 handleSendMessage(e as any);
               }
             }}
-            placeholder="Type a message..."
+            placeholder="Type a message…"
             rows={1}
-            className="flex-1 min-h-[40px] max-h-[120px] rounded-2xl border border-input bg-background px-4 py-2.5 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary disabled:opacity-50 resize-none custom-scrollbar"
+            className="custom-scrollbar max-h-[120px] min-h-[38px] flex-1 resize-none bg-transparent py-1.5 text-sm focus-visible:outline-none disabled:opacity-50"
             disabled={!isConnected}
           />
-          <button type="submit" disabled={!inputText.trim() || !isConnected} className="flex shrink-0 size-10 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-sm transition-transform active:scale-95 hover:bg-primary/90 disabled:opacity-50 disabled:active:scale-100">
-            <Send className="size-4 ml-0.5" />
+          <button
+            type="submit"
+            disabled={!inputText.trim() || !isConnected}
+            className="flex size-9 shrink-0 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-sm transition-transform hover:bg-primary/90 active:scale-90 disabled:opacity-50 disabled:active:scale-100"
+          >
+            <Send className="ml-0.5 size-4" />
           </button>
         </div>
       </form>
