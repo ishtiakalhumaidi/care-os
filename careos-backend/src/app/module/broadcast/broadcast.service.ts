@@ -1,11 +1,11 @@
 import status from "http-status";
-import AppError from "../../errorHelpers/AppError";
-import { prisma } from "../../lib/prisma";
+import AppError from "../../errorHelpers/AppError.js";
+import { prisma } from "../../lib/prisma.js";
 import type {
   BroadcastAudience,
   BroadcastPriority,
 } from "../../../generated/prisma/enums";
-import { getIO } from "../../lib/socket";
+import { getIO } from "../../lib/socket.js";
 
 interface ICreateBroadcastPayload {
   title: string;
