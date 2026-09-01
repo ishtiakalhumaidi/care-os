@@ -6,6 +6,10 @@ model Tenant {
   isActive         Boolean   @default(true)
   suspendedAt      DateTime?
   suspensionReason String?
+  stripeSubscriptionId String?   @unique
+  currentPeriodStart   DateTime?
+  currentPeriodEnd     DateTime?
+  cancelAtPeriodEnd    Boolean   @default(false)
 
   contactEmail String?
   contactPhone String?
