@@ -308,6 +308,31 @@ const unassignClassroom = catchAsync(async (req: Request, res: Response) => {
     data: result,
   });
 });
+
+const updateGuardianSplits = catchAsync(async (req: Request, res: Response) => {
+  const { id } = req.params;
+  const { splits } = req.body;
+  const tenantId = req.user!.tenantId as string;
+  const staffBranchId =
+    req.user!.role === "TENANT_OWNER"
+      ? undefined
+      : (req.user!.branchId as string);
+
+  const result = await ChildService.updateGuardianSplits(
+    id as string,
+    splits,
+    tenantId,
+    staffBranchId,
+  );
+
+  sendResponse(res, {
+    httpStatusCode: status.OK,
+    success: true,
+    message: "Guardian billing splits updated",
+    data: result,
+  });
+});
+
 export const ChildController = {
   applyForChild,
   getAllChildren,
@@ -322,5 +347,6 @@ export const ChildController = {
   selfUnlinkGuardian,
   updatePickupPermission,
   assignClassroom,
-  unassignClassroom
+  unassignClassroom,
+  updateGuardianSplits
 };

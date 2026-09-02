@@ -234,3 +234,18 @@ export const selfUnlinkGuardian = async (childId: string, linkId: string) => {
     throw new Error(error.response?.data?.message || "Failed to remove guardian");
   }
 };
+
+export const updateGuardianSplits = async (
+  childId: string,
+  splits: { linkId: string; splitPercentage: number }[],
+) => {
+  try {
+    const response = await serverApi.patch(`/children/${childId}/guardians/split`, { splits });
+    return response.data;
+  } catch (error: any) {
+    console.error("Backend Error:", error.response?.data || error.message);
+    throw new Error(
+      error.response?.data?.message || "Failed to update custody splits",
+    );
+  }
+};

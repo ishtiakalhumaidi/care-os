@@ -21,7 +21,9 @@ import {
   Megaphone, 
   BellRing,
   Images ,
-  Receipt
+  Receipt,
+  FileText,
+  FileDown
 } from "lucide-react";
 import { Logo } from "@/components/common/logo";
 import { useSidebar } from "../providers/SidebarContext";
@@ -43,7 +45,9 @@ const ownerNavigation: NavItem[] = [
   { name: "Guardian Requests", href: "/owner/dashboard/guardian-requests", icon: UserCheck },
   { name: "Team", href: "/owner/dashboard/team-management", icon: UserPlus },
   { name: "Billing & Plan", href: "/owner/dashboard/billing", icon: CreditCard },
+  {name: "Compliance & Audits", href: "/owner/dashboard/compliance", icon: FileDown},
   { name: "Settings", href: "/owner/settings", icon: Settings },
+
 ];
 
 const centerAdminNavigation: NavItem[] = [
@@ -67,6 +71,7 @@ const guardianNavigation: NavItem[] = [
   { name: "Alerts", href: "/guardian/dashboard/alerts", icon: BellRing },
   { name: "Gallery", href: "/guardian/dashboard/gallery", icon: Images }, 
   { name: "Tuition & Billing", href: "/guardian/dashboard/billing", icon: CreditCard },
+  { name: "Documents", href: "/guardian/dashboard/documents", icon: FileText },
 ];
 
 const sharedNavigation: NavItem[] = [

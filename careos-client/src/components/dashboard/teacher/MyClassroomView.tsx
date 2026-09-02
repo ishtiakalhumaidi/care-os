@@ -7,6 +7,7 @@ import { useQuery } from "@tanstack/react-query";
 import { getCurrentAttendance } from "@/services/attendance.services";
 import { getMyClassrooms, IClassroom } from "@/services/classroom.services";
 import { Loader2, School, ChevronRight, Users } from "lucide-react";
+import DownloadReportButton from "@/components/ui/DownloadReportButton";
 
 export default function MyClassroomView() {
   const { data, isLoading } = useQuery({
@@ -44,6 +45,8 @@ export default function MyClassroomView() {
 
   return (
     <div className="space-y-4">
+      <DownloadReportButton label="Print Classroom Roster/Logs" reportType="ATTENDANCE"/>
+      
       {classrooms.map((classroom) => {
         const enrolledCount = classroom._count?.children ?? 0;
         const presentCount = presentCountByClassroom.get(classroom.id) ?? 0;

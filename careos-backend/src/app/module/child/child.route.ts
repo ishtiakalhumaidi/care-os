@@ -24,6 +24,11 @@ router.post(
   validateRequest(ChildValidation.linkGuardianZodSchema),
   ChildController.linkGuardian,
 );
+router.patch(
+  "/:id/guardians/split",
+  checkAuth(Role.TENANT_OWNER, Role.CENTER_ADMIN),
+  ChildController.updateGuardianSplits,
+);
 
 router.patch(
   "/:id/suspend",

@@ -4,6 +4,7 @@ import React from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Clock, CheckCircle2, User, Loader2, Calendar } from "lucide-react";
 import { getChildAttendanceHistory } from "@/services/attendance.services";
+import DownloadReportButton from "@/components/ui/DownloadReportButton";
 
 // Define the extended interface locally based on our new backend response
 interface IAttendanceRecordWithNames {
@@ -54,10 +55,13 @@ export default function GuardianAttendanceHistory({ childId }: { childId: string
 
   return (
     <div className="rounded-lg border border-border bg-card p-5">
-      <h3 className="mb-4 text-sm font-semibold text-foreground flex items-center gap-2">
+     <div className="mb-4 flex items-center justify-between">
+       <h3 className="mb-4 text-sm font-semibold text-foreground flex items-center gap-2">
         <Calendar className="size-4 text-muted-foreground" />
         Recent Attendance (30 Days)
       </h3>
+      <DownloadReportButton label="Download 30-Day ATTENDANCE Log" reportType="ATTENDANCE"/>
+     </div>
 
       <div className="relative space-y-4 before:absolute before:inset-y-0 before:left-3.5 before:w-px before:bg-border pl-10">
         {data.map((record, index) => (

@@ -94,7 +94,6 @@ const getPermittedContacts = async (user: any) => {
       break;
 
     case "TENANT_OWNER":
-   
       contacts = await prisma.user.findMany({
         where: {
           OR: [
@@ -119,8 +118,25 @@ const getPermittedContacts = async (user: any) => {
       });
       break;
       
-    case "GUARDIAN":
-   
+    case "GUARDIAN":  
+      const guardianLinks = await prisma.childGuardian.findMany({
+        where: { userId: user.id },
+        select: { child: { select: { branchId: true, tenantId: true } } }
+      });
+
+      const branchIds = [...new Set(guardianLinks.map(link => link.child.branchId))];
+      const tenantIds = [...new Set(guardianLinks.map(link => link.child.tenantId))];
+
+      contacts = await prisma.user.findMany({
+        where: {
+          OR: [
+            { role: "CENTER_ADMIN", branchId: { in: branchIds } },
+            { role: "TENANT_OWNER", tenantId: { in: tenantIds } },
+            { role: "TEACHER", branchId: { in: branchIds } }
+          ]
+        },
+        select: { id: true, name: true, role: true, image: true, isOnline: true },
+      });
       break;
   }
   

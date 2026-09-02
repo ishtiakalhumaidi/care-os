@@ -35,6 +35,8 @@ import SuspendChildModal from "./SuspendChildModal";
 import GuardianAttendanceHistory from "../guardian/GuardianAttendanceHistory";
 import Image from "next/image";
 import Link from "next/link";
+import GuardianSplitManager from "./GuardianSplitManager";
+import AdminDocumentManager from "./AdminDocumentManager"; // <-- Added Import
 
 export default function ChildDetailView({
   childId,
@@ -319,61 +321,74 @@ export default function ChildDetailView({
 
       {/* Content grid */}
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-5">
-        {/* Linked Guardians */}
-        <div className="rounded-xl border border-border bg-card p-5 sm:p-6 lg:col-span-2">
-          <div className="mb-4 flex items-center justify-between">
-            <h3 className="text-base font-semibold text-foreground">Guardians</h3>
-            <button
-              onClick={() => setIsLinkOpen(true)}
-              className="inline-flex items-center gap-1.5 rounded-md bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground transition-colors hover:bg-primary/90"
-            >
-              <UserPlus className="size-3.5" /> Link
-            </button>
+        
+        {/* Left Column: Linked Guardians, Split Custody & Documents */}
+        <div className="flex flex-col gap-6 lg:col-span-2">
+          
+          <div className="rounded-xl border border-border bg-card p-5 sm:p-6">
+            <div className="mb-4 flex items-center justify-between">
+              <h3 className="text-base font-semibold text-foreground">Guardians</h3>
+              <button
+                onClick={() => setIsLinkOpen(true)}
+                className="inline-flex items-center gap-1.5 rounded-md bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground transition-colors hover:bg-primary/90"
+              >
+                <UserPlus className="size-3.5" /> Link
+              </button>
+            </div>
+
+            {!child.guardians || child.guardians.length === 0 ? (
+              <div className="flex flex-col items-center justify-center rounded-lg border border-dashed border-border py-10 text-center">
+                <p className="text-sm text-muted-foreground">No guardians linked yet.</p>
+              </div>
+            ) : (
+              <ul className="divide-y divide-border">
+                {child.guardians.map((g) => (
+                  <li key={g.id} className="flex items-center justify-between gap-3 py-3">
+                    <div className="flex min-w-0 items-center gap-3">
+                      <div className="flex size-9 shrink-0 items-center justify-center rounded-full bg-muted text-xs font-medium text-foreground">
+                        {g.user.name?.slice(0, 2).toUpperCase()}
+                      </div>
+                      <div className="min-w-0">
+                        <p className="truncate text-sm font-medium text-foreground">
+                          {g.user.name}
+                        </p>
+                        <p className="truncate text-xs text-muted-foreground">
+                          {g.user.email} · {g.relationship}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="flex shrink-0 items-center gap-2">
+                      {g.isPrimary && (
+                        <span className="hidden rounded-full bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary sm:inline">
+                          Primary
+                        </span>
+                      )}
+                      <button
+                        onClick={() => removeGuardian(g.id)}
+                        className="rounded-md p-1.5 text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive"
+                        aria-label={`Remove ${g.user.name}`}
+                        title="Remove guardian"
+                      >
+                        <XIcon className="size-3.5" />
+                      </button>
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            )}
           </div>
 
-          {!child.guardians || child.guardians.length === 0 ? (
-            <div className="flex flex-col items-center justify-center rounded-lg border border-dashed border-border py-10 text-center">
-              <p className="text-sm text-muted-foreground">No guardians linked yet.</p>
-            </div>
-          ) : (
-            <ul className="divide-y divide-border">
-              {child.guardians.map((g) => (
-                <li key={g.id} className="flex items-center justify-between gap-3 py-3">
-                  <div className="flex min-w-0 items-center gap-3">
-                    <div className="flex size-9 shrink-0 items-center justify-center rounded-full bg-muted text-xs font-medium text-foreground">
-                      {g.user.name?.slice(0, 2).toUpperCase()}
-                    </div>
-                    <div className="min-w-0">
-                      <p className="truncate text-sm font-medium text-foreground">
-                        {g.user.name}
-                      </p>
-                      <p className="truncate text-xs text-muted-foreground">
-                        {g.user.email} · {g.relationship}
-                      </p>
-                    </div>
-                  </div>
-                  <div className="flex shrink-0 items-center gap-2">
-                    {g.isPrimary && (
-                      <span className="hidden rounded-full bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary sm:inline">
-                        Primary
-                      </span>
-                    )}
-                    <button
-                      onClick={() => removeGuardian(g.id)}
-                      className="rounded-md p-1.5 text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive"
-                      aria-label={`Remove ${g.user.name}`}
-                      title="Remove guardian"
-                    >
-                      <XIcon className="size-3.5" />
-                    </button>
-                  </div>
-                </li>
-              ))}
-            </ul>
+          {/* Split-Custody Manager Component */}
+          {child.guardians && child.guardians.length > 0 && (
+            <GuardianSplitManager childId={child.id} guardians={child.guardians} />
           )}
+
+          {/* 👇 Document Manager Component */}
+          <AdminDocumentManager childId={child.id} />
+
         </div>
 
-        {/* Attendance Timeline */}
+        {/* Right Column: Attendance Timeline */}
         {child.status === "ENROLLED" && (
           <div className="lg:col-span-3">
             <GuardianAttendanceHistory childId={child.id} />

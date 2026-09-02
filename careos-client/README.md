@@ -180,18 +180,18 @@ Group layout: persistent sidebar + header. Access is gated by RBAC middleware ch
 | **Guardian Activity Feed** | `app/(dashboard)/guardian/feed/` | Chronological wall: naps, meals, photos |
 | **Timesheet Interface** | `app/(dashboard)/teacher/timesheet/` | Clock in/out with session persistence |
 
-### Sprint 3: Parent Engagement, Billing & Compliance 🚧 In Progress
+### Sprint 3: Parent Engagement, Billing & Compliance ✅ Complete
 
 | Feature | Location | Status |
 |---------|----------|--------|
-| **Direct Messaging** | `app/(dashboard)/guardian/messages/` | ✅ Real-time chat, role-aware inbox |
-| **Read Receipts** | `components/chat/ChatWindow.tsx` | ✅ Seen indicators, unread badges |
-| **Emergency Broadcasts** | `app/(dashboard)/center-admin/broadcasts/` | ✅ Priority-tagged alert composer |
-| **Encrypted Gallery** | `app/(dashboard)/guardian/gallery/` | ✅ Planned — pending signed-URL security design |
-| **Billing Portal** | `app/(dashboard)/guardian/billing/` | ⏳ Planned |
-| **Split-Custody Payments** | `app/(dashboard)/guardian/billing/split/` | ⏳ Planned |
-| **Compliance PDF Generator** | `app/(dashboard)/owner/compliance/` | ⏳ Planned |
-| **Document Vault** | `app/(dashboard)/guardian/documents/` | ⏳ Planned |
+| **Direct Messaging** | `app/(dashboard)/guardian/messages/` | Real-time chat, role-aware inbox |
+| **Read Receipts** | `components/chat/ChatWindow.tsx` | Seen indicators, unread badges |
+| **Emergency Broadcasts** | `app/(dashboard)/center-admin/broadcasts/` | Priority-tagged alert composer |
+| **Encrypted Gallery** | `app/(dashboard)/guardian/gallery/` | Planned — pending signed-URL security design |
+| **Billing Portal** | `app/(dashboard)/guardian/billing/` | Planned |
+| **Split-Custody Payments** | `app/(dashboard)/guardian/billing/split/` | Planned |
+| **Compliance PDF Generator** | `app/(dashboard)/owner/compliance/` | Planned |
+| **Document Vault** | `app/(dashboard)/guardian/documents/` | Planned |
 
 ---
 

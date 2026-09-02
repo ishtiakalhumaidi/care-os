@@ -80,18 +80,18 @@ Built around strict **Role-Based Access Control (RBAC)** and complex many-to-man
 | **Guardian Activity Feed** | ✅ | A Facebook-style wall showing the daily logs (naps, meals) and photo gallery updates. |
 | **Timesheet Interface** | ✅ | Staff UI to clock in/out their own working hours. |
 
-### Sprint 3: Parent Engagement, Billing & Compliance 🚧
+### Sprint 3: Parent Engagement, Billing & Compliance ✅
 > *Build the "Warmth" factor for parents while handling heavy-duty financial and legal requirements.*
 
 | Feature | Status | Description |
 |---------|--------|-------------|
 | **Direct Messaging (DM) & Read Receipts** | ✅ | Real-time chat UI between Parents and Teachers, including UI indicators to confirm messages are seen. |
 | **Emergency Broadcasts** | ✅ | Admin notification center to send priority-tagged alerts for urgent events. |
-| **Encrypted Gallery** | ⏳ | Viewing of photos/videos associated with specific children, restricted to authorized Guardians. |
-| **Guardian Billing Portal** | ⏳ | UI for Guardians to view invoices, manage payment methods, and see their tuition breakdown. |
-| **Split-Custody Payment UI** | ⏳ | Interface for Primary Guardians to define percentage-based splits with secondary Guardians. |
-| **Compliance PDF Generator** | ⏳ | Admin tool to generate and download attendance/ratio reports for government licensing. |
-| **Document Vault** | ⏳ | UI for uploading/signing immunization records and enrollment contracts. |
+| **Encrypted Gallery** | ✅ | Viewing of photos/videos associated with specific children, restricted to authorized Guardians. |
+| **Guardian Billing Portal** | ✅ | UI for Guardians to view invoices, manage payment methods, and see their tuition breakdown. |
+| **Split-Custody Payment UI** | ✅ | Interface for Primary Guardians to define percentage-based splits with secondary Guardians. |
+| **Compliance PDF Generator** | ✅ | Admin tool to generate and download attendance/ratio reports for government licensing. |
+| **Document Vault** | ✅ | UI for uploading/signing immunization records and enrollment contracts. |
 
 ---
 

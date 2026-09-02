@@ -6,6 +6,7 @@ import { useQuery, useMutation } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { Loader2, CreditCard, CheckCircle2, Receipt, AlertCircle } from "lucide-react";
 import { getGuardianInvoices, payGuardianInvoice } from "@/services/billing.services";
+import DownloadReportButton from "@/components/ui/DownloadReportButton";
 
 export default function GuardianBillingView() {
   const [loadingInvoiceId, setLoadingInvoiceId] = useState<string | null>(null);
@@ -67,6 +68,7 @@ export default function GuardianBillingView() {
                 <AlertCircle className="size-4" />
                 Your Responsibility: {childData.splitPercentage}%
               </div>
+              <DownloadReportButton label="Download Payment History" reportType="BILLING"/>
             </div>
 
             {/* Invoices List */}
@@ -140,6 +142,7 @@ export default function GuardianBillingView() {
           </div>
         );
       })}
+      
     </div>
   );
 }

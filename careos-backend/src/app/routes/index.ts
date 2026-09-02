@@ -32,8 +32,13 @@ router.use("/timeline", TimelineRoutes);
 router.use("/schedules", ScheduleRoutes);
 router.use("/messages", MessageRoutes);
 router.use("/broadcasts", BroadcastRoutes);
+<<<<<<< Updated upstream
 router.use("/media", MediaRoutes)
 router.use("/billing", BillingRoutes)
+=======
+router.use("/media", MediaRoutes);
+router.use("/billing", BillingRoutes);
+>>>>>>> Stashed changes
 router.use("/documents", DocumentRoutes);
 router.use("/compliance", ComplianceRoutes);
 

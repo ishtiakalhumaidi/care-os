@@ -591,6 +591,45 @@ const reactivateChild = async (
   });
 };
 
+const updateGuardianSplits = async (
+  childId: string,
+  splits: { linkId: string; splitPercentage: number }[],
+  tenantId: string,
+  staffBranchId?: string,
+) => {
+  const child = await prisma.child.findUnique({ where: { id: childId } });
+
+  if (!child || child.tenantId !== tenantId) {
+    throw new AppError(status.NOT_FOUND, "Child not found");
+  }
+
+  if (staffBranchId && child.branchId !== staffBranchId) {
+    throw new AppError(
+      status.FORBIDDEN,
+      "You do not have access to this branch",
+    );
+  }
+
+  const totalSplit = splits.reduce((sum, split) => sum + split.splitPercentage, 0);
+  if (totalSplit !== 100) {
+    throw new AppError(
+      status.BAD_REQUEST,
+      `Financial custody splits must exactly equal 100%. Current total is ${totalSplit}%.`
+    );
+  }
+
+  const transaction = splits.map((split) =>
+    prisma.childGuardian.update({
+      where: { id: split.linkId, childId },
+      data: { splitPercentage: split.splitPercentage },
+    })
+  );
+
+  await prisma.$transaction(transaction);
+
+  return { message: "Custody billing splits updated successfully" };
+};
+
 export const ChildService = {
   applyForChild,
   getAllChildren,
@@ -606,4 +645,5 @@ export const ChildService = {
   updatePickupPermission,
   assignClassroom,
   unassignClassroom,
+  updateGuardianSplits
 };

@@ -69,7 +69,6 @@ export default function MessagingDrawer({
       const params = new URLSearchParams(searchParams.toString());
       params.delete("action");
 
-      
       const newUrl = params.toString() ? `${pathname}?${params.toString()}` : pathname;
       router.replace(newUrl, { scroll: false });
     }
@@ -109,10 +108,11 @@ export default function MessagingDrawer({
     queryFn: () => getMyConversations().then((res) => res.data),
   });
 
+  // Allowed Guardians to fetch contacts so they can DM the Admin/Teacher
   const { data: contactsData, isLoading: isLoadingContacts } = useQuery({
     queryKey: ["message-contacts"],
     queryFn: () => getContacts().then((res) => res.data),
-    enabled: showContacts && !isGuardian,
+    enabled: showContacts, 
   });
 
   const { mutate: startDM, isPending: isStartingDM } = useMutation({
@@ -305,7 +305,6 @@ export default function MessagingDrawer({
     contact.name.toLowerCase().includes(searchQuery.toLowerCase())
   ) || [];
 
-
   const headerAvatar = (() => {
     if (showContacts || !activeConv) return null;
     if (activeConv.classroom) {
@@ -333,6 +332,11 @@ export default function MessagingDrawer({
       </div>
     );
   })();
+
+  // Guardians don't need to see the "Teams" tab in contacts
+  const visibleContactTabs = isGuardian 
+    ? CONTACT_TABS.filter(t => t.key === "direct") 
+    : CONTACT_TABS;
 
   return (
     <>
@@ -392,7 +396,8 @@ export default function MessagingDrawer({
                 </div>
 
                 <div className="flex shrink-0 items-center gap-1">
-                  {!activeConv && !showContacts && !isGuardian && (
+                  {/* Made the + button available to everyone */}
+                  {!activeConv && !showContacts && (
                     <button
                       onClick={handleOpenContacts}
                       title="New Message"
@@ -412,10 +417,10 @@ export default function MessagingDrawer({
                   <div className="flex h-full items-center justify-center"><Loader2 className="size-6 animate-spin text-muted-foreground" /></div>
                 ) : activeConv ? (
                   <ChatWindow conversationId={activeConv.id} currentUserId={currentUserId} />
-                ) : showContacts && !isGuardian ? (
+                ) : showContacts ? (
                   <div className="flex flex-1 flex-col overflow-hidden">
                     <div className="relative flex gap-1 bg-card p-2">
-                      {CONTACT_TABS.map((tab) => (
+                      {visibleContactTabs.map((tab) => (
                         <button
                           key={tab.key}
                           onClick={() => setContactTab(tab.key)}
@@ -568,7 +573,8 @@ export default function MessagingDrawer({
                           <p className="text-sm font-medium text-foreground">
                             {searchQuery ? "No results found." : isGuardian ? "No messages yet." : `No ${activeTab} conversations.`}
                           </p>
-                          {(!searchQuery && !isGuardian) && (
+                          {/* Allowed Guardians to use the empty state button as well */}
+                          {!searchQuery && (
                             <button
                               onClick={handleOpenContacts}
                               className="mt-2 flex items-center gap-1.5 rounded-full bg-primary/10 px-3.5 py-1.5 text-sm font-medium text-primary transition-colors hover:bg-primary/20"
