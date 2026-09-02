@@ -20,7 +20,8 @@ import {
   UserCheck,
   Megaphone, 
   BellRing,
-  Images 
+  Images ,
+  Receipt
 } from "lucide-react";
 import { Logo } from "@/components/common/logo";
 import { useSidebar } from "../providers/SidebarContext";
@@ -52,6 +53,7 @@ const centerAdminNavigation: NavItem[] = [
   { name: "Students", href: "/center-admin/dashboard/students-management", icon: Baby },
   { name: "Guardian Requests", href: "/center-admin/dashboard/guardian-requests", icon: UserCheck },
   { name: "Team", href: "/center-admin/dashboard/team-management", icon: UserPlus },
+  { name: "Invoicing", href: "/admin/dashboard/billing", icon: Receipt },
 ];
 
 const teacherNavigation: NavItem[] = [
@@ -64,6 +66,7 @@ const guardianNavigation: NavItem[] = [
   { name: "Dashboard", href: "/guardian/dashboard", icon: LayoutDashboard },
   { name: "Alerts", href: "/guardian/dashboard/alerts", icon: BellRing },
   { name: "Gallery", href: "/guardian/dashboard/gallery", icon: Images }, 
+  { name: "Tuition & Billing", href: "/guardian/dashboard/billing", icon: CreditCard },
 ];
 
 const sharedNavigation: NavItem[] = [

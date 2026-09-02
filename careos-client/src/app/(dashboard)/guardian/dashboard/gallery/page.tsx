@@ -6,9 +6,9 @@ import GuardianGalleryView from "@/components/dashboard/gallery/GuardianGalleryV
 export default async function GuardianGalleryPage() {
   const user = await getMe();
 
-  if (!user  user.role !== "GUARDIAN") {
-    redirect("/login");
-  }
+if (!user || user.role !== "GUARDIAN") {
+  redirect("/login");
+}
 
   return (
     <div className="space-y-6 max-w-5xl mx-auto">
@@ -20,7 +20,7 @@ export default async function GuardianGalleryPage() {
       </div>
 
       <GuardianGalleryView 
-        childrenProfiles={user.guardianProfile  []} 
+        childrenProfiles={user.guardianProfile || []} 
         currentUserRole={user.role} 
       />
     </div>
