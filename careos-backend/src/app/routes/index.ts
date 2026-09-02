@@ -15,6 +15,7 @@ import { BroadcastRoutes } from "../module/broadcast/broadcast.route.js";
 import { MediaRoutes } from "../module/media/media.route.js";
 import { BillingRoutes } from "../module/billing/billing.route.js";
 import { DocumentRoutes } from "../module/document/document.route.js";
+import { ComplianceRoutes } from "../module/compliance/compliance.route.js";
 
 const router = Router();
 
@@ -34,5 +35,6 @@ router.use("/broadcasts", BroadcastRoutes);
 router.use("/media", MediaRoutes)
 router.use("/billing", BillingRoutes)
 router.use("/documents", DocumentRoutes);
+router.use("/compliance", ComplianceRoutes);
 
 export const IndexRoutes = router;
