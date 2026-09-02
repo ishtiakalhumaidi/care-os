@@ -16,7 +16,7 @@
     "studio": "prisma studio",
     "push": "prisma db push",
     "pull": "prisma db pull",
-    "stripe:webhook": "stripe listen --forward-to localhost:5000/webhook"
+    "stripe:webhook": "stripe listen --forward-to http://localhost:5000/api/v1/billing/webhook"
   },
   "keywords": [],
   "author": "",
