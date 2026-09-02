@@ -13,6 +13,7 @@ import { ScheduleRoutes } from "../module/schedule/schedule.route.js";
 import { MessageRoutes } from "../module/message/message.route.js";
 import { BroadcastRoutes } from "../module/broadcast/broadcast.route.js";
 import { MediaRoutes } from "../module/media/media.route.js";
+import { BillingRoutes } from "../module/billing/billing.route.js";
 
 const router = Router();
 
@@ -30,5 +31,6 @@ router.use("/schedules", ScheduleRoutes);
 router.use("/messages", MessageRoutes);
 router.use("/broadcasts", BroadcastRoutes);
 router.use("/media", MediaRoutes)
+router.use("/billing", BillingRoutes)
 
 export const IndexRoutes = router;
