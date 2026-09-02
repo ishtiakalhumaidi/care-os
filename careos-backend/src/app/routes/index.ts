@@ -14,6 +14,7 @@ import { MessageRoutes } from "../module/message/message.route.js";
 import { BroadcastRoutes } from "../module/broadcast/broadcast.route.js";
 import { MediaRoutes } from "../module/media/media.route.js";
 import { BillingRoutes } from "../module/billing/billing.route.js";
+import { DocumentRoutes } from "../module/document/document.route.js";
 
 const router = Router();
 
@@ -32,5 +33,6 @@ router.use("/messages", MessageRoutes);
 router.use("/broadcasts", BroadcastRoutes);
 router.use("/media", MediaRoutes)
 router.use("/billing", BillingRoutes)
+router.use("/documents", DocumentRoutes);
 
 export const IndexRoutes = router;
