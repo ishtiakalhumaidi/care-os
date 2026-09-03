@@ -1,0 +1,1 @@
+export const dashboardPeriods = ["7d", "30d", "90d"] as const;
