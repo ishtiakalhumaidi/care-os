@@ -8,7 +8,7 @@ export interface IChildGuardianEntry {
   relationship: string;
   isPrimary: boolean;
   canPickup: boolean;
-  user: { id: string; name: string; email: string };
+  user: { id: string; name: string; email: string ; image:string};
 }
 export interface ILinkGuardianPayload {
   userId: string;

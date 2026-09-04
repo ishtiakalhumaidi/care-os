@@ -66,27 +66,13 @@ const formatDayLabel = (dateStr: string) => {
 
 const GROUP_WINDOW_MS = 5 * 60 * 1000;
 
-/* ─── bubble tail svg ─── */
-function BubbleTail({ side, className }: { side: "left" | "right"; className?: string }) {
-  return side === "left" ? (
-    <svg width="10" height="10" viewBox="0 0 10 10" className={`absolute -left-[6px] bottom-[2px] ${className}`} fill="currentColor">
-      <path d="M10 0C10 6 6 10 0 10C4 7 5 4 5 0H10Z" />
-    </svg>
-  ) : (
-    <svg width="10" height="10" viewBox="0 0 10 10" className={`absolute -right-[6px] bottom-[2px] ${className}`} fill="currentColor">
-      <path d="M0 0C0 6 4 10 10 10C6 7 5 4 5 0H0Z" />
-    </svg>
-  );
-}
-
-/* ─── types ─── */
 interface ReplyInfo {
   id: string;
   content: string;
   senderName: string;
+  senderId: string;
 }
 
-/* ─── main component ─── */
 export default function ChatWindow({
   conversationId,
   currentUserId,
@@ -102,6 +88,7 @@ export default function ChatWindow({
   const [replyingTo, setReplyingTo] = useState<ReplyInfo | null>(null);
   const [activeMenuId, setActiveMenuId] = useState<string | null>(null);
   const [showScrollBtn, setShowScrollBtn] = useState(false);
+  const [highlightedMsgId, setHighlightedMsgId] = useState<string | null>(null);
   const [limit, setLimit] = useState(50);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -122,7 +109,32 @@ export default function ChatWindow({
 
   const messages = useMemo(() => data || [], [data]);
 
-  /* ─── partner info ─── */
+  const resolveReply = useCallback(
+    (replyToId?: string, directReplyTo?: any) => {
+      if (!replyToId) return null;
+      
+      const target = messages.find((m: any) => m.id === replyToId);
+      if (target) {
+        return {
+          id: target.id,
+          content: target.content,
+          sender: target.sender,
+          senderId: target.senderId,
+        };
+      }
+      
+      if (directReplyTo) {
+        return {
+          ...directReplyTo,
+          senderId: directReplyTo.senderId,
+        };
+      }
+      return null;
+    },
+    [messages]
+  );
+
+  /* ─── partner status ─── */
   const baseStatuses = useMemo(() => {
     const s: Record<string, { isOnline: boolean; lastActiveAt: string }> = {};
     messages.forEach((msg: any) => {
@@ -145,12 +157,13 @@ export default function ChatWindow({
     return msg?.sender || null;
   }, [messages, currentUserId, isDM, activeConv]);
 
-  /* ─── decorated messages ─── */
+  /* ─── message grouping (messages with replies NEVER group so quotes remain visible) ─── */
   const decoratedMessages = useMemo(() => {
     return messages.map((msg: any, idx: number) => {
       const prev = idx > 0 ? messages[idx - 1] : null;
       const showDay = !prev || new Date(prev.createdAt).toDateString() !== new Date(msg.createdAt).toDateString();
       const isGrouped =
+        !msg.replyToId &&
         !!prev &&
         !showDay &&
         prev.senderId === msg.senderId &&
@@ -161,9 +174,19 @@ export default function ChatWindow({
     });
   }, [messages]);
 
-  /* ─── scroll behavior ─── */
+  /* ─── scroll helpers ─── */
   const scrollToBottom = useCallback((behavior: ScrollBehavior = "smooth") => {
     messagesEndRef.current?.scrollIntoView({ behavior });
+  }, []);
+
+  const scrollToMessage = useCallback((msgId?: string) => {
+    if (!msgId) return;
+    const el = document.getElementById(`msg-${msgId}`);
+    if (el) {
+      el.scrollIntoView({ behavior: "smooth", block: "center" });
+      setHighlightedMsgId(msgId);
+      setTimeout(() => setHighlightedMsgId(null), 1800);
+    }
   }, []);
 
   const handleScroll = useCallback(() => {
@@ -173,7 +196,6 @@ export default function ChatWindow({
     setShowScrollBtn(!nearBottom);
   }, []);
 
-  // Auto-scroll on new messages only if near bottom
   const lastCountRef = useRef(0);
   useEffect(() => {
     const isFirstLoad = lastCountRef.current === 0 && messages.length > 0;
@@ -190,7 +212,7 @@ export default function ChatWindow({
     lastCountRef.current = 0;
   }, [conversationId]);
 
-  /* ─── socket ─── */
+  /* ─── socket listeners ─── */
   useEffect(() => {
     if (!socket || !isConnected) return;
     socket.emit("join_conversation", conversationId);
@@ -271,22 +293,28 @@ export default function ChatWindow({
     setEditingMessageId(msg.id);
     setInputText(msg.content);
     setReplyingTo(null);
+    setActiveMenuId(null);
     inputRef.current?.focus();
   };
 
   const startReply = (msg: any) => {
     const name = msg.senderId === currentUserId ? "Yourself" : msg.sender?.name || "Staff";
-    setReplyingTo({ id: msg.id, content: msg.content, senderName: name });
+    setReplyingTo({ id: msg.id, content: msg.content, senderName: name, senderId: msg.senderId });
     setEditingMessageId(null);
+    setActiveMenuId(null);
     inputRef.current?.focus();
   };
 
-  const handleSend = (e: React.FormEvent) => {
+ const handleSend = (e: React.FormEvent) => {
     e.preventDefault();
     if (!inputText.trim() || !socket) return;
 
     if (editingMessageId) {
-      socket.emit("edit_message", { conversationId, messageId: editingMessageId, newContent: inputText.trim() });
+      socket.emit("edit_message", {
+        conversationId,
+        messageId: editingMessageId,
+        newContent: inputText.trim(),
+      });
       setEditingMessageId(null);
     } else {
       const text = inputText.trim();
@@ -298,9 +326,22 @@ export default function ChatWindow({
         sender: { name: "You", role: "USER" },
         readAt: null,
         replyToId: replyingTo?.id || null,
+        replyTo: replyingTo
+          ? {
+              id: replyingTo.id,
+              content: replyingTo.content,
+              senderId: replyingTo.senderId,
+              sender: { name: replyingTo.senderName },
+            }
+          : null,
       };
+
       queryClient.setQueryData(["messages", conversationId, limit], (old: any) => [...(old || []), optimistic]);
-      socket.emit("send_message", { conversationId, content: text, replyToId: replyingTo?.id || undefined });
+      socket.emit("send_message", {
+        conversationId,
+        content: text,
+        replyToId: replyingTo?.id || undefined,
+      });
       setReplyingTo(null);
     }
     setInputText("");
@@ -311,7 +352,7 @@ export default function ChatWindow({
     setActiveMenuId(null);
   };
 
-  /* ─── keyboard shortcuts ─── */
+  /* ─── keyboard escape ─── */
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.key === "Escape") {
@@ -332,7 +373,6 @@ export default function ChatWindow({
     el.style.height = `${Math.min(el.scrollHeight, 120)}px`;
   }, [inputText]);
 
-  /* ─── render ─── */
   return (
     <div className="relative flex h-full flex-col bg-card">
       {/* ─── Header ─── */}
@@ -384,8 +424,8 @@ export default function ChatWindow({
         onScroll={handleScroll}
         className="custom-scrollbar flex-1 overflow-y-auto px-3 py-4 sm:px-5"
         style={{
-          backgroundImage: "radial-gradient(circle, var(--border) 1px, transparent 1px)",
-          backgroundSize: "20px 20px",
+          backgroundImage:
+            "radial-gradient(ellipse 900px 500px at 15% -10%, color-mix(in srgb, var(--primary) 5%, transparent), transparent), radial-gradient(ellipse 800px 500px at 100% 110%, color-mix(in srgb, var(--primary) 4%, transparent), transparent)",
           backgroundColor: "var(--background)",
         }}
       >
@@ -431,6 +471,7 @@ export default function ChatWindow({
                 const isMe = msg.senderId === currentUserId;
                 const isSending = msg.id.startsWith("temp-");
                 const senderOnline = !isMe && getStatus(msg.senderId).isOnline;
+                const replyData = resolveReply(msg.replyToId, msg.replyTo);
 
                 const dayDivider = msg.__showDay ? (
                   <div className="my-5 flex items-center justify-center">
@@ -444,10 +485,21 @@ export default function ChatWindow({
                   return (
                     <React.Fragment key={msg.id}>
                       {dayDivider}
-                      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="my-2 flex w-full justify-center">
-                        <div className="flex items-center gap-1.5 rounded-full bg-muted/60 px-3.5 py-1.5 text-[11px] italic text-muted-foreground">
-                          <Ban className="size-3 opacity-50" />
-                          {isMe ? "You" : msg.sender?.name} removed a message
+                      <motion.div
+                        initial={{ opacity: 0, y: 4 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        className={`flex w-full gap-2 ${isMe ? "justify-end" : "justify-start"} ${msg.__grouped ? "mt-1" : "mt-3"}`}
+                      >
+                        {!isMe && <div className="w-8 shrink-0" />}
+                        <div
+                          className={`flex items-center gap-1.5 rounded-2xl border border-foreground/5 bg-foreground/[0.02] px-3.5 py-2 text-[13px] text-muted-foreground/70 shadow-sm backdrop-blur-sm ${
+                            isMe ? "rounded-br-sm" : "rounded-bl-sm"
+                          }`}
+                        >
+                          <Ban className="size-3.5 shrink-0 opacity-40" />
+                          <span className="italic">
+                            {isMe ? "You unsent a message" : `${msg.sender?.name || "Someone"} unsent a message`}
+                          </span>
                         </div>
                       </motion.div>
                     </React.Fragment>
@@ -458,23 +510,18 @@ export default function ChatWindow({
                   <React.Fragment key={msg.id}>
                     {dayDivider}
 
-                    {/* Reply preview if this message is a reply */}
-                    {msg.replyToId && !msg.__grouped && (
-                      <div className={`mb-1 flex ${isMe ? "justify-end" : "justify-start"}`}>
-                        <div className={`max-w-[68%] rounded-lg border-l-2 border-primary/40 bg-muted/40 px-3 py-1.5 ${isMe ? "mr-1" : "ml-9"}`}>
-                          <p className="text-[10px] font-semibold text-primary">{msg.replyTo?.sender?.name || "Message"}</p>
-                          <p className="truncate text-[11px] text-muted-foreground">{msg.replyTo?.content || "Original message"}</p>
-                        </div>
-                      </div>
-                    )}
-
                     <motion.div
+                      id={`msg-${msg.id}`}
                       initial={isSending ? { opacity: 0, y: 10, scale: 0.97 } : false}
                       animate={{ opacity: isSending ? 0.7 : 1, y: 0, scale: 1 }}
                       transition={{ duration: 0.2, ease: [0.22, 1, 0.36, 1] as const }}
-                      className={`group flex w-full gap-2 ${isMe ? "justify-end" : "justify-start"} ${msg.__grouped ? "mt-0.5" : "mt-3"}`}
+                      className={`group flex w-full gap-2 transition-all duration-300 ${
+                        isMe ? "justify-end" : "justify-start"
+                      } ${msg.__grouped ? "mt-1" : "mt-3"} ${
+                        highlightedMsgId === msg.id ? "rounded-2xl p-1 ring-2 ring-primary ring-offset-2 ring-offset-background" : ""
+                      }`}
                     >
-                      {/* Avatar */}
+                      {/* Avatar for incoming */}
                       {!isMe && (
                         <div className="relative w-8 shrink-0 self-end">
                           {!msg.__grouped && (
@@ -492,93 +539,153 @@ export default function ChatWindow({
                         </div>
                       )}
 
-                      <div className={`flex max-w-[78%] flex-col sm:max-w-[68%] ${isMe ? "items-end" : "items-start"}`}>
-                        {/* Sender name */}
-                        {!isMe && !msg.__grouped && (
+                      <div className={`flex max-w-[82%] flex-col sm:max-w-[70%] ${isMe ? "items-end" : "items-start"}`}>
+                        {/* Sender name for incoming */}
+                        {!isMe && !msg.__grouped && !replyData && (
                           <span className="mb-1 ml-1 text-[10px] font-semibold text-muted-foreground">
                             {formatNameWithRole(msg.sender?.name, msg.sender?.role)}
                           </span>
                         )}
 
-                        <div className="relative flex items-end gap-1.5">
-                          {/* Actions menu (me only) */}
+                        {/* ─── Messenger-Style External Reply Context ─── */}
+                        {replyData && (
+                          <div className={`mb-1 flex flex-col ${isMe ? "items-end" : "items-start"}`}>
+                            {!isMe && !msg.__grouped && (
+                              <span className="mb-1 ml-1 text-[10px] font-semibold text-muted-foreground">
+                                {formatNameWithRole(msg.sender?.name, msg.sender?.role)}
+                              </span>
+                            )}
+                            <div className="mb-0.5 flex items-center gap-1.5 px-1 text-[11px] font-medium text-muted-foreground">
+                              <CornerUpLeft className="size-3" />
+                              <span>
+                                {isMe
+                                  ? (replyData.senderId === currentUserId || replyData.sender?.name === "You" || replyData.sender?.name === "Yourself"
+                                      ? "You replied to yourself"
+                                      : `You replied to ${replyData.sender?.name || "someone"}`)
+                                  : (replyData.senderId === currentUserId
+                                      ? `${msg.sender?.name} replied to you`
+                                      : replyData.senderId === msg.senderId
+                                      ? `${msg.sender?.name} replied to themselves`
+                                      : `${msg.sender?.name} replied to ${replyData.sender?.name || "someone"}`)
+                                }
+                              </span>
+                            </div>
+                            <div
+                              onClick={() => scrollToMessage(replyData.id)}
+                              className={`group/quote flex max-w-[92%] cursor-pointer select-none items-stretch gap-2.5 overflow-hidden rounded-xl border py-1.5 pr-3.5 transition-colors ${
+                                isMe
+                                  ? "border-primary/15 bg-primary/[0.06] hover:bg-primary/[0.09]"
+                                  : "border-border bg-muted/50 hover:bg-muted"
+                              }`}
+                            >
+                              <span className={`w-[3px] shrink-0 rounded-full ${isMe ? "bg-primary/50" : "bg-muted-foreground/40"}`} />
+                              <div className="min-w-0 py-0.5">
+                                <p className={`flex items-center gap-1 text-[11px] font-semibold ${isMe ? "text-primary" : "text-foreground/80"}`}>
+                                  <CornerUpLeft className="size-2.5 opacity-70" />
+                                  {isMe
+                                    ? (replyData.senderId === currentUserId || replyData.sender?.name === "You" || replyData.sender?.name === "Yourself"
+                                        ? "You"
+                                        : replyData.sender?.name || "Someone")
+                                    : (replyData.senderId === currentUserId
+                                        ? "You"
+                                        : replyData.senderId === msg.senderId
+                                        ? replyData.sender?.name || "Them"
+                                        : replyData.sender?.name || "Someone")
+                                  }
+                                </p>
+                                <p className="line-clamp-1 text-[12px] text-muted-foreground">{replyData.content || "Original message"}</p>
+                              </div>
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Interactive Message Row: Bubble & Side Actions */}
+                        <div className="relative flex items-center gap-1.5">
+                          {/* ─── Actions for ME: positioned on the LEFT of my message ─── */}
                           {isMe && !isSending && (
-                            <div className="mb-2 opacity-0 transition-opacity group-hover:opacity-100">
+                            <div className="flex items-center gap-0.5 opacity-0 transition-opacity duration-150 group-hover:opacity-100">
                               <button
-                                onClick={() => setActiveMenuId(activeMenuId === msg.id ? null : msg.id)}
-                                className="rounded-full p-1.5 text-muted-foreground transition-colors hover:bg-muted"
+                                type="button"
+                                onClick={() => startReply(msg)}
+                                className="flex size-7 items-center justify-center rounded-full text-muted-foreground transition-all hover:bg-muted hover:text-foreground hover:scale-105 active:scale-95"
+                                title="Reply to yourself"
                               >
-                                <MoreVertical className="size-3.5" />
+                                <CornerUpLeft className="size-3.5" />
                               </button>
-                              <AnimatePresence>
-                                {activeMenuId === msg.id && (
-                                  <motion.div
-                                    ref={menuRef}
-                                    initial={{ opacity: 0, scale: 0.95, y: 4 }}
-                                    animate={{ opacity: 1, scale: 1, y: 0 }}
-                                    exit={{ opacity: 0, scale: 0.95, y: 4 }}
-                                    transition={{ duration: 0.12 }}
-                                    className="absolute bottom-8 right-0 z-30 w-36 overflow-hidden rounded-xl border border-border bg-popover shadow-xl"
-                                  >
-                                    <button
-                                      onClick={() => startReply(msg)}
-                                      className="flex w-full items-center gap-2 px-3.5 py-2.5 text-xs text-foreground transition-colors hover:bg-muted"
+                              <div className="relative">
+                                <button
+                                  type="button"
+                                  onClick={() => setActiveMenuId(activeMenuId === msg.id ? null : msg.id)}
+                                  className="flex size-7 items-center justify-center rounded-full text-muted-foreground transition-all hover:bg-muted hover:text-foreground hover:scale-105 active:scale-95"
+                                  title="More actions"
+                                >
+                                  <MoreVertical className="size-3.5" />
+                                </button>
+                                <AnimatePresence>
+                                  {activeMenuId === msg.id && (
+                                    <motion.div
+                                      ref={menuRef}
+                                      initial={{ opacity: 0, scale: 0.95, y: 4 }}
+                                      animate={{ opacity: 1, scale: 1, y: 0 }}
+                                      exit={{ opacity: 0, scale: 0.95, y: 4 }}
+                                      transition={{ duration: 0.12 }}
+                                      className="absolute bottom-8 right-0 z-30 w-36 overflow-hidden rounded-xl border border-border bg-popover shadow-xl"
                                     >
-                                      <CornerUpLeft className="size-3.5" /> Reply
-                                    </button>
-                                    <button
-                                      onClick={() => startEdit(msg)}
-                                      className="flex w-full items-center gap-2 px-3.5 py-2.5 text-xs text-foreground transition-colors hover:bg-muted"
-                                    >
-                                      <Edit2 className="size-3.5" /> Edit
-                                    </button>
-                                    <div className="h-px bg-border" />
-                                    <button
-                                      onClick={() => handleDelete(msg.id)}
-                                      className="flex w-full items-center gap-2 px-3.5 py-2.5 text-xs text-destructive transition-colors hover:bg-destructive/10"
-                                    >
-                                      <Trash2 className="size-3.5" /> Delete
-                                    </button>
-                                  </motion.div>
-                                )}
-                              </AnimatePresence>
+                                      <button
+                                        onClick={() => startEdit(msg)}
+                                        className="flex w-full items-center gap-2 px-3.5 py-2 text-xs text-foreground transition-colors hover:bg-muted"
+                                      >
+                                        <Edit2 className="size-3.5" /> Edit
+                                      </button>
+                                      <div className="h-px bg-border" />
+                                      <button
+                                        onClick={() => handleDelete(msg.id)}
+                                        className="flex w-full items-center gap-2 px-3.5 py-2 text-xs text-destructive transition-colors hover:bg-destructive/10"
+                                      >
+                                        <Trash2 className="size-3.5" /> Delete
+                                      </button>
+                                    </motion.div>
+                                  )}
+                                </AnimatePresence>
+                              </div>
                             </div>
                           )}
 
+                          {/* ─── Message Bubble ─── */}
+                          <div
+                            className={`relative min-w-[4rem] rounded-2xl px-3.5 py-2 text-[13px] leading-relaxed shadow-sm ${
+                              isMe
+                                ? `bg-primary text-primary-foreground ${!msg.__grouped ? "rounded-br-sm" : ""}`
+                                : `border border-border/70 bg-card text-foreground ${!msg.__grouped ? "rounded-bl-sm" : ""}`
+                            }`}
+                          >
+                            <p className="whitespace-pre-wrap break-words">{msg.content}</p>
+                            {msg.isEdited && <span className="ml-1.5 align-top text-[9px] italic opacity-60">(edited)</span>}
+                          </div>
+
+                          {/* ─── Actions for OTHER PERSON: positioned on the RIGHT of their message ─── */}
                           {!isMe && !isSending && (
-                            <div className="mb-2 opacity-0 transition-opacity group-hover:opacity-100">
+                            <div className="flex items-center gap-0.5 opacity-0 transition-opacity duration-150 group-hover:opacity-100">
                               <button
+                                type="button"
                                 onClick={() => startReply(msg)}
-                                className="rounded-full p-1.5 text-muted-foreground transition-colors hover:bg-muted"
-                                title="Reply"
+                                className="flex size-7 items-center justify-center rounded-full text-muted-foreground transition-all hover:bg-muted hover:text-foreground hover:scale-105 active:scale-95"
+                                title="Reply to message"
                               >
                                 <CornerUpLeft className="size-3.5" />
                               </button>
                             </div>
                           )}
-
-                          {/* Bubble */}
-                          <div
-                            className={`relative min-w-[4rem] rounded-2xl px-4 py-2.5 text-[13px] leading-relaxed shadow-sm ${
-                              isMe
-                                ? `bg-primary text-primary-foreground ${!msg.__grouped ? "rounded-br-md" : ""}`
-                                : `border border-border/70 bg-muted text-foreground ${!msg.__grouped ? "rounded-bl-md" : ""}`
-                            }`}
-                          >
-                            {!msg.__grouped && <BubbleTail side={isMe ? "right" : "left"} className={isMe ? "text-primary" : "text-muted"} />}
-                            <p className="whitespace-pre-wrap break-words">{msg.content}</p>
-                            {msg.isEdited && <span className="ml-1.5 align-top text-[9px] italic opacity-60">(edited)</span>}
-                          </div>
                         </div>
 
-                        {/* Meta row */}
-                        <div className="mt-1 flex items-center gap-1.5 px-1">
+                        {/* Timestamp & Read receipts */}
+                        <div className="mt-0.5 flex items-center gap-1.5 px-1">
                           <span className="text-[10px] text-muted-foreground">
                             {new Date(msg.createdAt).toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" })}
                           </span>
                           {isMe && !isSending && (
                             <span className="text-muted-foreground">
-                              {msg.readAt ? <CheckCheck className="size-3.5 text-primary" /> : <Check className="size-3.5" />}
+                              {msg.readAt ? <CheckCheck className="size-3 text-primary" /> : <Check className="size-3" />}
                             </span>
                           )}
                         </div>
@@ -601,14 +708,14 @@ export default function ChatWindow({
             animate={{ opacity: 1, scale: 1 }}
             exit={{ opacity: 0, scale: 0.8 }}
             onClick={() => scrollToBottom("smooth")}
-            className="absolute bottom-20 right-5 z-20 flex size-9 items-center justify-center rounded-full border border-border bg-card text-foreground shadow-lg transition-colors hover:bg-muted"
+            className="absolute bottom-24 right-5 z-20 flex size-9 items-center justify-center rounded-full border border-border bg-card text-foreground shadow-lg transition-colors hover:bg-muted"
           >
             <ArrowDown className="size-4" />
           </motion.button>
         )}
       </AnimatePresence>
 
-      {/* ─── Input Area ─── */}
+      {/* ─── Messenger-Style Reply Context & Input Bar ─── */}
       <div className="border-t border-border bg-card/95 backdrop-blur supports-[backdrop-filter]:bg-card/90">
         <AnimatePresence>
           {replyingTo && (
@@ -616,17 +723,21 @@ export default function ChatWindow({
               initial={{ opacity: 0, height: 0 }}
               animate={{ opacity: 1, height: "auto" }}
               exit={{ opacity: 0, height: 0 }}
-              className="mx-4 overflow-hidden border-b border-border/50"
+              className="mx-3 overflow-hidden pt-2 sm:mx-4"
             >
-              <div className="flex items-start gap-2 py-2.5">
-                <div className="mt-0.5 text-primary">
-                  <CornerUpLeft className="size-3.5" />
-                </div>
-                <div className="min-w-0 flex-1">
-                  <p className="text-[10px] font-bold uppercase tracking-wider text-primary">Replying to {replyingTo.senderName}</p>
+              <div className="flex items-stretch gap-2.5 overflow-hidden rounded-xl border border-primary/15 bg-primary/[0.06] py-1.5 pl-0 pr-2">
+                <span className="w-[3px] shrink-0 rounded-full bg-primary/50" />
+                <div className="min-w-0 flex-1 py-0.5">
+                  <p className="flex items-center gap-1 text-[11px] font-semibold text-primary">
+                    <CornerUpLeft className="size-2.5" />
+                    Replying to {replyingTo.senderName === "You" || replyingTo.senderName === "Yourself" ? "yourself" : replyingTo.senderName}
+                  </p>
                   <p className="truncate text-xs text-muted-foreground">{replyingTo.content}</p>
                 </div>
-                <button onClick={() => setReplyingTo(null)} className="rounded-md p-1 text-muted-foreground hover:bg-muted">
+                <button
+                  onClick={() => setReplyingTo(null)}
+                  className="flex size-6 shrink-0 items-center justify-center self-center rounded-full text-muted-foreground transition-colors hover:bg-primary/10 hover:text-foreground"
+                >
                   <X className="size-3.5" />
                 </button>
               </div>
@@ -640,7 +751,7 @@ export default function ChatWindow({
               exit={{ opacity: 0, height: 0 }}
               className="mx-4 overflow-hidden border-b border-primary/20"
             >
-              <div className="flex items-center justify-between py-2.5">
+              <div className="flex items-center justify-between py-2">
                 <span className="text-xs font-semibold text-primary">Editing message</span>
                 <button onClick={cancelEdit} className="text-[11px] text-muted-foreground hover:text-foreground hover:underline">
                   Cancel
@@ -650,8 +761,8 @@ export default function ChatWindow({
           )}
         </AnimatePresence>
 
-        <form onSubmit={handleSend} className="flex items-end gap-2 p-3 sm:p-4">
-          <div className="flex flex-1 items-end gap-2 rounded-2xl border border-input bg-background px-3 py-2 shadow-sm transition-shadow focus-within:ring-1 focus-within:ring-primary/20">
+        <form onSubmit={handleSend} className="flex items-end gap-3 p-3 sm:p-4">
+          <div className="flex min-h-[44px] flex-1 items-end rounded-[22px] border border-input bg-background px-4 shadow-sm transition-shadow focus-within:ring-1 focus-within:ring-primary/20">
             <textarea
               ref={inputRef}
               value={inputText}
@@ -665,15 +776,15 @@ export default function ChatWindow({
               placeholder={isConnected ? "Type a message…" : "Reconnecting…"}
               rows={1}
               disabled={!isConnected}
-              className="custom-scrollbar max-h-[120px] min-h-[36px] w-full flex-1 resize-none bg-transparent py-1.5 text-sm leading-snug text-foreground placeholder:text-muted-foreground/60 focus-visible:outline-none disabled:opacity-50"
+              className="custom-scrollbar max-h-[120px] w-full resize-none bg-transparent py-3 text-[14px] leading-snug text-foreground placeholder:text-muted-foreground/60 focus-visible:outline-none disabled:opacity-50"
             />
           </div>
           <button
             type="submit"
             disabled={!inputText.trim() || !isConnected}
-            className="flex size-10 shrink-0 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-sm transition-all hover:bg-primary/90 hover:shadow active:scale-90 disabled:opacity-40 disabled:active:scale-100"
+            className="mb-[2px] flex size-[40px] shrink-0 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-sm transition-all hover:bg-primary/90 hover:shadow active:scale-95 disabled:opacity-40 disabled:active:scale-100"
           >
-            <Send className="ml-0.5 size-4" />
+            <Send className="ml-0.5 size-[18px]" />
           </button>
         </form>
       </div>

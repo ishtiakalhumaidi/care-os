@@ -18,6 +18,10 @@ export interface ITimelineEvent {
   description: string | null;
   loggedBy: string;
   loggedAt: string;
+  createdBy: {
+    id: string;
+    name: string;
+    email: string;};
 }
 
 export const logTimelineEvent = async (
