@@ -8,7 +8,7 @@ import { useForm } from "@tanstack/react-form";
 import z from "zod";
 import { publicApi } from "@/lib/api-client";
 import { setSessionCookies } from "@/actions/auth.actions"; 
-import { Loader2, ArrowRight, Eye, EyeOff, CheckCircle2 } from "lucide-react";
+import { Loader2, ArrowRight, Eye, EyeOff, CheckCircle2, Zap } from "lucide-react";
 import { toast } from "sonner";
 import Link from "next/link";
 
@@ -38,31 +38,40 @@ const validateWithZod = (schema: z.ZodTypeAny) => ({ value }: { value: any }) =>
 const inputClass =
   "mt-1.5 block w-full rounded-xl border border-input bg-background px-3.5 py-2.5 text-sm text-foreground placeholder:text-muted-foreground shadow-sm transition-colors focus:border-primary focus:outline-none focus:ring-2 focus:ring-ring/40";
 
+const DEMO_ACCOUNTS = [
+  { role: "Owner", email: "icare.owner@careos.com", password: "Careos@1" },
+  { role: "Center Admin", email: "icare.admin@careos.com", password: "rokimozumder313@gmail.comA" },
+  { role: "Teacher", email: "icare.teacher@careos.com", password: "Careos@1" },
+  { role: "Guardian", email: "icare.guardian@careos.com", password: "Careos@1" },
+  { role: "Super Admin", email: "super.admin@careos.dev", password: "Careos#1" },
+];
+
 export default function LoginFormWrapper() {
   const router = useRouter();
   const searchParams = useSearchParams();
+  
+  // ── ADD THIS ──
+  const redirectTo = searchParams.get("redirect") || "/";
+
   const isVerified = searchParams.get("verified") === "true";
   const isRegistered = searchParams.get("registered") === "true";
-
   const [showPassword, setShowPassword] = useState(false);
 
   const { mutate, isPending } = useMutation({
     mutationFn: async (values: LoginFormValues) => {
       const response = await publicApi.post("/auth/login", values);
-      return response.data; // This returns your exact JSON payload
+      return response.data;
     },
     onSuccess: async (responsePayload) => {
-      // 1. Extract tokens from your custom JSON response
       const { accessToken, refreshToken } = responsePayload.data;
 
-      // 2. Pass them to the Server Action to set secure HttpOnly cookies
       if (accessToken && refreshToken) {
         await setSessionCookies(accessToken, refreshToken);
       }
 
       toast.success("Authentication successful");
       
-      router.push("/");
+      router.push(redirectTo);
     },
     onError: (err: any) => {
       toast.error(err?.response?.data?.message || "Invalid email or password.");
@@ -78,6 +87,12 @@ export default function LoginFormWrapper() {
       mutate(value);
     },
   });
+
+  const handleQuickLogin = (account: typeof DEMO_ACCOUNTS[0]) => {
+    form.setFieldValue("email", account.email);
+    form.setFieldValue("password", account.password);
+    mutate({ email: account.email, password: account.password });
+  };
 
   return (
     <div className="space-y-6">
@@ -197,6 +212,35 @@ export default function LoginFormWrapper() {
           )}
         </button>
       </form>
+
+      {/* Quick Access / Demo Accounts Section */}
+      <div className="pt-4">
+        <div className="relative">
+          <div className="absolute inset-0 flex items-center" aria-hidden="true">
+            <div className="w-full border-t border-border"></div>
+          </div>
+          <div className="relative flex justify-center">
+            <span className="bg-background px-4 text-xs font-medium text-muted-foreground inline-flex items-center gap-1.5">
+              <Zap className="size-3" />
+              Quick Access for Test
+            </span>
+          </div>
+        </div>
+
+        <div className="mt-5 flex flex-wrap justify-center gap-2">
+          {DEMO_ACCOUNTS.map((account) => (
+            <button
+              key={account.role}
+              type="button"
+              disabled={isPending}
+              onClick={() => handleQuickLogin(account)}
+              className="inline-flex items-center rounded-lg border border-border bg-card px-3 py-1.5 text-xs font-medium text-foreground shadow-sm transition-all hover:border-primary/30 hover:bg-primary/5 focus:outline-none focus:ring-2 focus:ring-primary/20 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              {account.role}
+            </button>
+          ))}
+        </div>
+      </div>
     </div>
   );
 }

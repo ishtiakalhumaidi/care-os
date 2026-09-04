@@ -58,7 +58,7 @@ const centerAdminNavigation: NavItem[] = [
   { name: "Students", href: "/center-admin/dashboard/students-management", icon: Baby },
   { name: "Guardian Requests", href: "/center-admin/dashboard/guardian-requests", icon: UserCheck },
   { name: "Team", href: "/center-admin/dashboard/team-management", icon: UserPlus },
-  { name: "Invoicing", href: "/admin/dashboard/billing", icon: Receipt },
+  { name: "Invoicing", href: "/center-admin/dashboard/billing", icon: Receipt },
 ];
 
 const teacherNavigation: NavItem[] = [

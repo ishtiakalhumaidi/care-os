@@ -8,6 +8,7 @@ export interface IMe {
   email: string;
   role: string;
   tenantId?: string;
+  
   image?: string;
   branch?: { id: string; name: string };
   classroom?: { id: string; name: string };
