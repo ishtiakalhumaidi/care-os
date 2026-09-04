@@ -14,10 +14,17 @@ import type { Prisma, Branch } from "../../../generated/prisma/client.js";
 import type { IQuery } from "../../interfaces/query.interface.js";
 import { QueryBuilder } from "../../builder/QueryBuilder.js";
 
-const getLiveRatio = async (branchId: string, tenantId: string) => {
+const getLiveRatio = async (branchId: string, tenantId: string, staffBranchId?: string) => {
   const branch = await prisma.branch.findUnique({ where: { id: branchId } });
-  if (!branch || branch.tenantId !== tenantId) {
+
+  if (!branch || branch.deletedAt || branch.tenantId !== tenantId) {
     throw new AppError(status.NOT_FOUND, "Branch not found or unauthorized");
+  }
+  if (!branch.isActive) {
+    throw new AppError(status.FORBIDDEN, "Branch is deactivated");
+  }
+  if (staffBranchId && branchId !== staffBranchId) {
+    throw new AppError(status.FORBIDDEN, "You do not have access to this branch");
   }
 
   const classrooms = await prisma.classroom.findMany({
@@ -28,44 +35,52 @@ const getLiveRatio = async (branchId: string, tenantId: string) => {
       legalCapacity: true,
       ratioLimit: true,
       _count: { select: { teacherAssignments: true } },
-    }
+    },
   });
 
   const activeAttendances = await prisma.attendance.findMany({
     where: {
       child: { branchId },
-      status: { in: ["CHECKED_IN", "PENDING_CHECKOUT"] }
+      status: { in: ["CHECKED_IN", "PENDING_CHECKOUT"] },
     },
     select: {
-      child: { select: { classroomId: true } }
-    }
+      child: { select: { classroomId: true } },
+    },
   });
 
   const attendanceCountByClassroom = new Map<string, number>();
-  activeAttendances.forEach(record => {
+  activeAttendances.forEach((record) => {
     const cId = record.child?.classroomId;
     if (cId) {
       attendanceCountByClassroom.set(cId, (attendanceCountByClassroom.get(cId) || 0) + 1);
     }
   });
 
-  return classrooms.map(c => {
+  return classrooms.map((c) => {
     const presentChildren = attendanceCountByClassroom.get(c.id) || 0;
-    
-    const teacherCount = c._count.teacherAssignments; 
-    
+    const teacherCount = c._count.teacherAssignments;
+
     let state = "OK";
     const maxChildrenForTeachers = teacherCount * c.ratioLimit;
-    
+
     if (teacherCount === 0 && presentChildren > 0) {
-      state = "VIOLATION"; 
-    } else if (presentChildren > maxChildrenForTeachers || presentChildren > c.legalCapacity) {
-      state = "VIOLATION"; 
-    } else if (presentChildren >= maxChildrenForTeachers - 1 || presentChildren >= c.legalCapacity - 1) {
-      state = "WARNING"; 
+      state = "VIOLATION";
+    } else if (
+      presentChildren > maxChildrenForTeachers ||
+      presentChildren > c.legalCapacity
+    ) {
+      state = "VIOLATION";
+    } else if (
+      presentChildren >= maxChildrenForTeachers - 1 ||
+      presentChildren >= c.legalCapacity - 1
+    ) {
+      state = "WARNING";
     }
 
-    const currentRatio = teacherCount > 0 ? (presentChildren / teacherCount).toFixed(1) : presentChildren;
+    const currentRatio =
+      teacherCount > 0
+        ? (presentChildren / teacherCount).toFixed(1)
+        : presentChildren;
 
     return {
       classroomId: c.id,
@@ -75,7 +90,7 @@ const getLiveRatio = async (branchId: string, tenantId: string) => {
       teacherCount,
       presentChildren,
       currentRatio,
-      state
+      state,
     };
   });
 };
@@ -88,6 +103,9 @@ const createBranch = async (payload: ICreateBranchPayload) => {
   if (!isTenantExist) {
     throw new AppError(status.NOT_FOUND, "Tenant not found");
   }
+  if (!isTenantExist.isActive) {
+    throw new AppError(status.FORBIDDEN, "Tenant is suspended");
+  }
 
   if (isTenantExist.planId) {
     const plan = await prisma.subscriptionPlan.findUnique({
@@ -96,7 +114,7 @@ const createBranch = async (payload: ICreateBranchPayload) => {
 
     if (plan) {
       const branchCount = await prisma.branch.count({
-        where: { tenantId: payload.tenantId },
+        where: { tenantId: payload.tenantId, deletedAt: null },
       });
 
       if (branchCount >= plan.maxBranches) {
@@ -108,17 +126,19 @@ const createBranch = async (payload: ICreateBranchPayload) => {
     }
   }
 
-  const branch = await prisma.branch.create({
-    data: payload,
-  });
-
+  const branch = await prisma.branch.create({ data: payload });
   return branch;
 };
 
 const getAllBranches = async (query: IQuery, tenantId?: string) => {
-  const scopedQuery = tenantId
-    ? { ...query, tenantId, isActive: true }
-    : { ...query, isActive: true };
+  const baseWhere = tenantId
+    ? { tenantId, deletedAt: null }
+    : { deletedAt: null };
+
+  const scopedQuery =
+    query.includeInactive === "true"
+      ? { ...query, ...baseWhere }
+      : { ...query, ...baseWhere, isActive: true };
 
   const queryBuilder = new QueryBuilder<
     Branch,
@@ -147,15 +167,12 @@ const getBranchById = async (id: string, tenantId?: string) => {
     include: branchIncludeConfig as Prisma.BranchInclude,
   });
 
-  if (!branch || !branch.isActive) {
+  if (!branch || branch.deletedAt) {
     throw new AppError(status.NOT_FOUND, "Branch not found");
   }
 
   if (tenantId && branch.tenantId !== tenantId) {
-    throw new AppError(
-      status.FORBIDDEN,
-      "You do not have access to this branch",
-    );
+    throw new AppError(status.FORBIDDEN, "You do not have access to this branch");
   }
 
   return branch;
@@ -168,45 +185,117 @@ const updateBranch = async (
 ) => {
   const isBranchExist = await prisma.branch.findUnique({ where: { id } });
 
-  if (!isBranchExist || !isBranchExist.isActive) {
+  if (!isBranchExist || isBranchExist.deletedAt) {
     throw new AppError(status.NOT_FOUND, "Branch not found");
   }
 
-  if (tenantId && isBranchExist.tenantId !== tenantId) {
+  if (!isBranchExist.isActive) {
     throw new AppError(
       status.FORBIDDEN,
-      "You do not have access to this branch",
+      "This branch is locked by your subscription plan. Upgrade your plan to edit it.",
     );
   }
 
+  if (tenantId && isBranchExist.tenantId !== tenantId) {
+    throw new AppError(status.FORBIDDEN, "You do not have access to this branch");
+  }
+
+  const safePayload = { ...payload };
+  delete (safePayload as any).isActive;
+
   const updatedBranch = await prisma.branch.update({
     where: { id },
-    data: payload,
+    data: safePayload,
   });
 
   return updatedBranch;
 };
-
 const deleteBranch = async (id: string, tenantId?: string) => {
   const isBranchExist = await prisma.branch.findUnique({ where: { id } });
 
-  if (!isBranchExist || !isBranchExist.isActive) {
+  if (!isBranchExist || isBranchExist.deletedAt) {
     throw new AppError(status.NOT_FOUND, "Branch not found");
   }
 
   if (tenantId && isBranchExist.tenantId !== tenantId) {
-    throw new AppError(
-      status.FORBIDDEN,
-      "You do not have access to this branch",
-    );
+    throw new AppError(status.FORBIDDEN, "You do not have access to this branch");
   }
 
   await prisma.branch.update({
     where: { id },
-    data: { isActive: false },
+    data: { isActive: false, deletedAt: new Date() },
   });
 
-  return { message: "Branch deactivated successfully" };
+  return { message: "Branch deleted successfully" };
+};
+
+const syncBranchActivationToPlan = async (tenantId: string) => {
+  const tenant = await prisma.tenant.findUnique({
+    where: { id: tenantId },
+    include: { plan: true },
+  });
+
+  if (!tenant?.plan) return { activated: [], locked: [] };
+
+  const maxBranches = tenant.plan.maxBranches;
+
+  const nonDeletedBranches = await prisma.branch.findMany({
+    where: { tenantId, deletedAt: null },
+    orderBy: { createdAt: "asc" }, 
+    select: { id: true, name: true, isActive: true },
+  });
+
+  const toActivate = nonDeletedBranches.slice(0, maxBranches).map((b) => b.id);
+  const toLock = nonDeletedBranches.slice(maxBranches).map((b) => b.id);
+
+  await prisma.$transaction(async (tx) => {
+    if (toActivate.length > 0) {
+      await tx.branch.updateMany({
+        where: { id: { in: toActivate } },
+        data: { isActive: true },
+      });
+      await tx.user.updateMany({
+        where: {
+          branchId: { in: toActivate },
+          isDeleted: false,
+        },
+        data: { isActive: true },
+      });
+    }
+
+    if (toLock.length > 0) {
+      await tx.branch.updateMany({
+        where: { id: { in: toLock } },
+        data: { isActive: false },
+      });
+      await tx.user.updateMany({
+        where: {
+          branchId: { in: toLock },
+          role: { not: "TENANT_OWNER" },
+          isDeleted: false,
+        },
+        data: { isActive: false },
+      });
+    }
+  });
+
+  return { activated: toActivate, locked: toLock };
+};
+
+const deactivateAllBranchesForTenant = async (tenantId: string) => {
+  await prisma.branch.updateMany({
+    where: { tenantId },
+    data: { isActive: false },
+  });
+};
+
+const getBranchUsageStats = async (tenantId: string) => {
+  const [active, locked, totalNonDeleted] = await Promise.all([
+    prisma.branch.count({ where: { tenantId, isActive: true, deletedAt: null } }),
+    prisma.branch.count({ where: { tenantId, isActive: false, deletedAt: null } }),
+    prisma.branch.count({ where: { tenantId, deletedAt: null } }),
+  ]);
+  return { active, locked, total: totalNonDeleted };
 };
 
 export const BranchService = {
@@ -216,4 +305,7 @@ export const BranchService = {
   getBranchById,
   updateBranch,
   deleteBranch,
+  syncBranchActivationToPlan,
+  deactivateAllBranchesForTenant,
+  getBranchUsageStats,
 };

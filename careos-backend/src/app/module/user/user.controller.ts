@@ -8,7 +8,12 @@ import type { IQuery } from "../../interfaces/query.interface.js";
 
 const getAllUsers = catchAsync(async (req: Request, res: Response) => {
   const tenantId = req.user!.tenantId as string;
-  const result = await UserService.getAllUsers(req.query as IQuery, tenantId);
+  const result = await UserService.getAllUsers(
+    req.query as IQuery,
+    tenantId,
+    req.user!.role,
+    req.user!.branchId as string | undefined,
+  );
 
   sendResponse(res, {
     httpStatusCode: status.OK,
@@ -18,6 +23,7 @@ const getAllUsers = catchAsync(async (req: Request, res: Response) => {
     meta: result.meta,
   });
 });
+
 const getMe = catchAsync(async (req: Request, res: Response) => {
   const result = await UserService.getMe(req.user!.id);
 
@@ -33,7 +39,10 @@ const updateMe = catchAsync(async (req: Request, res: Response) => {
   const payload = req.body;
 
   if (req.file) {
-    const result = await uploadToCloudinary(req.file.buffer, `users/${req.user!.id}/avatar`);
+    const result = await uploadToCloudinary(
+      req.file.buffer,
+      `users/${req.user!.id}/avatar`,
+    );
     payload.image = result.secure_url;
   }
 

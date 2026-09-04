@@ -8,9 +8,15 @@ import { IQuery } from "../../interfaces/query.interface.js";
 const getLiveRatio = catchAsync(async (req, res) => {
   const { branchId } = req.params;
   const tenantId = req.user!.tenantId as string;
-  
-  const result = await BranchService.getLiveRatio(branchId as string, tenantId as string);
-  
+  const staffBranchId =
+    req.user!.role === "TENANT_OWNER" ? undefined : (req.user!.branchId as string);
+
+  const result = await BranchService.getLiveRatio(
+    branchId as string,
+    tenantId as string,
+    staffBranchId as string ,
+  );
+
   sendResponse(res, {
     httpStatusCode: status.OK,
     success: true,
@@ -21,10 +27,10 @@ const getLiveRatio = catchAsync(async (req, res) => {
 
 const createBranch = catchAsync(async (req: Request, res: Response) => {
   const payload = req.body;
-  payload.tenantId = req.user!.tenantId; 
+  payload.tenantId = req.user!.tenantId;
 
   const result = await BranchService.createBranch(payload);
-  
+
   sendResponse(res, {
     httpStatusCode: status.CREATED,
     success: true,
@@ -36,7 +42,7 @@ const createBranch = catchAsync(async (req: Request, res: Response) => {
 const getAllBranches = catchAsync(async (req: Request, res: Response) => {
   const tenantId = req.user!.tenantId;
   const result = await BranchService.getAllBranches(req.query as IQuery, tenantId as string);
-  
+
   sendResponse(res, {
     httpStatusCode: status.OK,
     success: true,
@@ -50,7 +56,7 @@ const getBranchById = catchAsync(async (req: Request, res: Response) => {
   const { id } = req.params;
   const tenantId = req.user!.tenantId;
   const result = await BranchService.getBranchById(id as string, tenantId as string);
-  
+
   sendResponse(res, {
     httpStatusCode: status.OK,
     success: true,
@@ -64,7 +70,7 @@ const updateBranch = catchAsync(async (req: Request, res: Response) => {
   const payload = req.body;
   const tenantId = req.user!.tenantId;
   const result = await BranchService.updateBranch(id as string, payload, tenantId as string);
-  
+
   sendResponse(res, {
     httpStatusCode: status.OK,
     success: true,
@@ -77,7 +83,7 @@ const deleteBranch = catchAsync(async (req: Request, res: Response) => {
   const { id } = req.params;
   const tenantId = req.user!.tenantId;
   const result = await BranchService.deleteBranch(id as string, tenantId as string);
-  
+
   sendResponse(res, {
     httpStatusCode: status.OK,
     success: true,

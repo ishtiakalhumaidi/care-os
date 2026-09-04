@@ -23,7 +23,7 @@ router.post(
 
 router.get(
   "/",
-  checkAuth(Role.TENANT_OWNER, Role.CENTER_ADMIN, Role.TEACHER),
+  checkAuth(Role.TENANT_OWNER, Role.CENTER_ADMIN), // ← FIX: removed TEACHER
   ClassroomController.getAllClassrooms,
 );
 
@@ -32,11 +32,13 @@ router.get(
   checkAuth(Role.TEACHER),
   ClassroomController.getMyClassrooms,
 );
+
 router.get(
   "/mine/:id",
   checkAuth(Role.TEACHER),
   ClassroomController.getMyClassroomById,
 );
+
 router.get(
   "/:id",
   checkAuth(Role.TENANT_OWNER, Role.CENTER_ADMIN, Role.TEACHER),

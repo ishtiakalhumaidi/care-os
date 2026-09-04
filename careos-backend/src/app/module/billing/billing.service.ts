@@ -6,6 +6,7 @@ import AppError from "../../errorHelpers/AppError.js";
 import status from "http-status";
 import { InvoiceStatus, Role } from "../../../generated/prisma/enums.js";
 import { QueryBuilder } from "../../builder/QueryBuilder.js";
+import { BranchService } from "../branch/branch.service.js";
 
 export const stripe = new Stripe(envVars.STRIPE.STRIPE_SECRET_KEY as string, {
   apiVersion: "2026-08-26.dahlia",
@@ -48,6 +49,14 @@ const createTenantSubscriptionCheckout = async (
     });
   } else {
     await stripe.customers.update(customerId, { email: userEmail });
+  }
+
+  if (tenant.stripeSubscriptionId) {
+    const portalSession = await stripe.billingPortal.sessions.create({
+      customer: customerId,
+      return_url: `${envVars.FRONTEND_URL}/owner/dashboard/billing`,
+    });
+    return { url: portalSession.url };
   }
 
   const session = await stripe.checkout.sessions.create({
@@ -265,14 +274,43 @@ const getTenantBillingOverview = async (
   user: any,
   query: Record<string, unknown>,
 ) => {
-  const branchFilter =
+  if (![Role.TENANT_OWNER, Role.CENTER_ADMIN].includes(user.role)) {
+    throw new AppError(status.FORBIDDEN, "Unauthorized");
+  }
+
+  const childWhere =
     user.role === Role.CENTER_ADMIN
       ? { branchId: user.branchId }
-      : user.role === Role.TENANT_OWNER
-        ? { tenantId: user.tenantId }
-        : {};
+      : { tenantId: user.tenantId };
 
-  const invoiceQuery = new QueryBuilder(prisma.invoice, query, {
+  const allowedChildren = await prisma.child.findMany({
+    where: childWhere,
+    select: { id: true },
+  });
+  const allowedChildIds = allowedChildren.map((c) => c.id);
+
+  if (allowedChildIds.length === 0) {
+    return {
+      data: [],
+      meta: {
+        page: Number(query.page) || 1,
+        limit: Number(query.limit) || 10,
+        total: 0,
+      },
+      totalBilled: 0,
+      totalInvoicesCount: 0,
+    };
+  }
+
+  const scopedQuery = {
+    ...query,
+    childId:
+      query.childId && allowedChildIds.includes(query.childId as string)
+        ? query.childId
+        : { in: allowedChildIds },
+  };
+
+  const invoiceQuery = new QueryBuilder(prisma.invoice, scopedQuery, {
     searchableFields: ["billingPeriodId"],
     filterableFields: ["status", "childId"],
   })
@@ -303,7 +341,8 @@ const getTenantBillingOverview = async (
 
   const aggregateSummary = await prisma.invoice.aggregate({
     where: {
-      child: branchFilter,
+      childId: { in: allowedChildIds },
+      ...(query.status ? { status: query.status as InvoiceStatus } : {}),
     },
     _sum: { amount: true },
     _count: { id: true },
@@ -315,11 +354,43 @@ const getTenantBillingOverview = async (
     totalInvoicesCount: aggregateSummary._count.id,
   };
 };
-
 // STRIPE WEBHOOK RECONCILIATION
 
 const handleStripeWebhookEvent = async (event: Stripe.Event) => {
   switch (event.type) {
+    case "customer.subscription.updated": {
+      const subscription = event.data.object as any;
+      const customerId = subscription.customer as string;
+
+      const tenant = await prisma.tenant.findFirst({
+        where: { stripeCustomerId: customerId },
+      });
+
+      if (!tenant) break;
+
+      const startDate = new Date(subscription.current_period_start * 1000);
+      const endDate = new Date(subscription.current_period_end * 1000);
+
+      await prisma.tenant.update({
+        where: { id: tenant.id },
+        data: {
+          currentPeriodStart: startDate,
+          currentPeriodEnd: endDate,
+          cancelAtPeriodEnd: subscription.cancel_at_period_end,
+          isActive: subscription.status === "active",
+        },
+      });
+
+      const syncResult = await BranchService.syncBranchActivationToPlan(tenant.id);
+      if (syncResult.activated.length > 0) {
+        console.log(`Unlocked ${syncResult.activated.length} branches for Tenant ${tenant.id}`);
+      }
+      if (syncResult.locked.length > 0) {
+        console.log(`Locked ${syncResult.locked.length} excess branches for Tenant ${tenant.id}`);
+      }
+      break;
+    }
+
     case "checkout.session.completed": {
       const session = event.data.object as Stripe.Checkout.Session;
       const billingType = session.metadata?.billingType;
@@ -328,7 +399,7 @@ const handleStripeWebhookEvent = async (event: Stripe.Event) => {
         if (billingType === "PLATFORM_SAAS") {
           const tenantId = session.metadata?.tenantId || (session.client_reference_id as string);
           const planId = session.metadata?.planId;
-          
+
           const subscription = session.subscription;
           const subscriptionId = typeof subscription === "string" ? subscription : (subscription as any)?.id;
 
@@ -337,7 +408,7 @@ const handleStripeWebhookEvent = async (event: Stripe.Event) => {
             let endDate = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
 
             if (subscriptionId) {
-             const stripeSub = (await stripe.subscriptions.retrieve(subscriptionId)) as any;
+              const stripeSub = (await stripe.subscriptions.retrieve(subscriptionId)) as any;
               if (stripeSub.current_period_start) {
                 startDate = new Date(stripeSub.current_period_start * 1000);
               }
@@ -357,7 +428,13 @@ const handleStripeWebhookEvent = async (event: Stripe.Event) => {
                 cancelAtPeriodEnd: false,
               },
             });
-            
+
+            // ─── FIX: Auto-activate branches up to new plan limit ───
+            const syncResult = await BranchService.syncBranchActivationToPlan(tenantId);
+            if (syncResult.activated.length > 0) {
+              console.log(`Unlocked ${syncResult.activated.length} branches for Tenant ${tenantId} after upgrade`);
+            }
+
             console.log(`Tenant ${tenantId} successfully upgraded to plan ${planId}`);
           }
         }
@@ -399,12 +476,11 @@ const handleStripeWebhookEvent = async (event: Stripe.Event) => {
                 });
               }
             }
-            console.log(` Guardian payment logged for invoice ${invoiceId}`);
+            console.log(`Guardian payment logged for invoice ${invoiceId}`);
           }
         }
       } catch (error: any) {
-        console.error(" WEBHOOK CRASH IN CHECKOUT.SESSION.COMPLETED:", error.message);
-      
+        console.error("WEBHOOK CRASH IN CHECKOUT.SESSION.COMPLETED:", error.message);
       }
       break;
     }
@@ -428,15 +504,16 @@ const handleStripeWebhookEvent = async (event: Stripe.Event) => {
     }
 
     case "customer.subscription.deleted": {
-      const subscription = event.data.object as Stripe.Subscription;
+      const subscription = event.data.object as any;
       const customerId = subscription.customer as string;
 
       const tenant = await prisma.tenant.findFirst({
         where: { stripeCustomerId: customerId },
       });
 
-      if (!tenant)
+      if (!tenant) {
         return { message: "Tenant not found for this subscription." };
+      }
 
       const freePlan = await prisma.subscriptionPlan.findFirst({
         where: { price: 0 },
@@ -456,22 +533,16 @@ const handleStripeWebhookEvent = async (event: Stripe.Event) => {
         },
       });
 
-      const branches = await prisma.branch.findMany({
-        where: { tenantId: tenant.id },
-        orderBy: { createdAt: "asc" },
-      });
-
-      if (branches.length > freePlan.maxBranches) {
-        const excessBranches = branches.slice(freePlan.maxBranches);
-        const branchIdsToLock = excessBranches.map((b) => b.id);
-
-        await prisma.branch.updateMany({
-          where: { id: { in: branchIdsToLock } },
-          data: { isActive: false },
-        });
-
+      // ─── FIX: Bidirectional sync after downgrade to free plan ───
+      const syncResult = await BranchService.syncBranchActivationToPlan(tenant.id);
+      if (syncResult.locked.length > 0) {
         console.log(
-          `🔒 Locked ${branchIdsToLock.length} excess branches for Tenant ${tenant.id} due to downgrade.`,
+          `Locked ${syncResult.locked.length} excess branches for Tenant ${tenant.id} due to downgrade.`,
+        );
+      }
+      if (syncResult.activated.length > 0) {
+        console.log(
+          `Unlocked ${syncResult.activated.length} branches for Tenant ${tenant.id} (within free plan limit).`,
         );
       }
 
@@ -493,6 +564,10 @@ const scheduleTenantDowngrade = async (tenantId: string) => {
       status.BAD_REQUEST,
       "No active paid subscription found.",
     );
+  }
+
+  if (tenant.cancelAtPeriodEnd) {
+    return tenant; 
   }
 
   await stripe.subscriptions.update(tenant.stripeSubscriptionId, {

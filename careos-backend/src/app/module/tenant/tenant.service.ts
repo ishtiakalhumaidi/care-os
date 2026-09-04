@@ -13,6 +13,7 @@ import {
 import type { Prisma, Tenant } from "../../../generated/prisma/client.js";
 import type { IQuery } from "../../interfaces/query.interface.js";
 import { QueryBuilder } from "../../builder/QueryBuilder.js";
+import { BranchService } from "../branch/branch.service.js";
 
 const getAllTenants = async (query: IQuery) => {
   const queryBuilder = new QueryBuilder<
@@ -33,6 +34,18 @@ const getAllTenants = async (query: IQuery) => {
     .fields()
     .execute();
 
+  if (result.data && Array.isArray(result.data)) {
+    for (const tenant of result.data) {
+      const realBranchCount = await prisma.branch.count({
+        where: { tenantId: (tenant as any).id, deletedAt: null },
+      });
+      (tenant as any)._count = {
+        ...(tenant as any)._count,
+        branches: realBranchCount,
+      };
+    }
+  }
+
   return result;
 };
 
@@ -46,10 +59,22 @@ const getTenantById = async (id: string) => {
     throw new AppError(status.NOT_FOUND, "Tenant not found");
   }
 
+  const realBranchCount = await prisma.branch.count({
+    where: { tenantId: id, deletedAt: null },
+  });
+  (tenant as any)._count = {
+    ...tenant._count,
+    branches: realBranchCount,
+  };
+
   return tenant;
 };
 
-const updateTenant = async (id: string, payload: IUpdateTenantPayload) => {
+const updateTenant = async (
+  id: string,
+  payload: IUpdateTenantPayload,
+  userRole?: string,
+) => {
   const isTenantExist = await prisma.tenant.findUnique({ where: { id } });
   if (!isTenantExist) {
     throw new AppError(status.NOT_FOUND, "Tenant not found");
@@ -64,6 +89,13 @@ const updateTenant = async (id: string, payload: IUpdateTenantPayload) => {
     }
   }
 
+  if (userRole === "TENANT_OWNER" && payload.planId) {
+    throw new AppError(
+      status.FORBIDDEN,
+      "Plan changes must be made through the billing page.",
+    );
+  }
+
   if (payload.planId) {
     const plan = await prisma.subscriptionPlan.findUnique({
       where: { id: payload.planId },
@@ -72,11 +104,13 @@ const updateTenant = async (id: string, payload: IUpdateTenantPayload) => {
       throw new AppError(status.BAD_REQUEST, "Invalid plan selected");
     }
 
-    const branchCount = await prisma.branch.count({ where: { tenantId: id } });
+    const branchCount = await prisma.branch.count({
+      where: { tenantId: id, deletedAt: null },
+    });
     if (branchCount > plan.maxBranches) {
       throw new AppError(
         status.CONFLICT,
-        `This plan allows ${plan.maxBranches} branch(es); you currently have ${branchCount}. Remove branches first.`,
+        `This plan allows ${plan.maxBranches} branch(es); you currently have ${branchCount} active/locked. Remove or delete branches first.`,
       );
     }
 
@@ -91,11 +125,35 @@ const updateTenant = async (id: string, payload: IUpdateTenantPayload) => {
     }
   }
 
-  return prisma.tenant.update({
+  const updated = await prisma.tenant.update({
     where: { id },
     data: payload,
     include: tenantIncludeConfig as Prisma.TenantInclude,
   });
+
+  if (payload.planId) {
+    const syncResult = await BranchService.syncBranchActivationToPlan(id);
+    if (syncResult.activated.length > 0) {
+      console.log(
+        `Unlocked ${syncResult.activated.length} branches for Tenant ${id}`,
+      );
+    }
+    if (syncResult.locked.length > 0) {
+      console.log(
+        `Locked ${syncResult.locked.length} excess branches for Tenant ${id}`,
+      );
+    }
+  }
+
+  const realBranchCount = await prisma.branch.count({
+    where: { tenantId: id, deletedAt: null },
+  });
+  (updated as any)._count = {
+    ...updated._count,
+    branches: realBranchCount,
+  };
+
+  return updated;
 };
 
 const suspendTenant = async (id: string, payload: ISuspendTenantPayload) => {
@@ -108,38 +166,68 @@ const suspendTenant = async (id: string, payload: ISuspendTenantPayload) => {
     throw new AppError(status.CONFLICT, "Tenant is already suspended");
   }
 
-  const tenant = await prisma.tenant.update({
-    where: { id },
-    data: {
-      isActive: false,
-      suspendedAt: new Date(),
-      suspensionReason: payload.reason,
-    },
+  await prisma.$transaction(async (tx) => {
+    // Suspend tenant
+    await tx.tenant.update({
+      where: { id },
+      data: {
+        isActive: false,
+        suspendedAt: new Date(),
+        suspensionReason: payload.reason,
+      },
+    });
+
+    await tx.branch.updateMany({
+      where: { tenantId: id, deletedAt: null },
+      data: { isActive: false },
+    });
+
+    await tx.user.updateMany({
+      where: {
+        tenantId: id,
+        role: { not: "TENANT_OWNER" },
+        deletedAt: null,
+      },
+      data: { isActive: false },
+    });
   });
 
-  return tenant;
+  return { message: "Tenant suspended successfully" };
 };
 
 const activateTenant = async (id: string) => {
-  const isTenantExist = await prisma.tenant.findUnique({ where: { id } });
-  if (!isTenantExist) {
+  const tenant = await prisma.tenant.findUnique({
+    where: { id },
+    include: { plan: true },
+  });
+
+  if (!tenant) {
     throw new AppError(status.NOT_FOUND, "Tenant not found");
   }
 
-  if (isTenantExist.isActive) {
+  if (tenant.isActive) {
     throw new AppError(status.CONFLICT, "Tenant is already active");
   }
 
-  const tenant = await prisma.tenant.update({
-    where: { id },
-    data: {
-      isActive: true,
-      suspendedAt: null,
-      suspensionReason: null,
-    },
+  await prisma.$transaction(async (tx) => {
+    await tx.tenant.update({
+      where: { id },
+      data: {
+        isActive: true,
+        suspendedAt: null,
+        suspensionReason: null,
+      },
+    });
   });
 
-  return tenant;
+  // ─── FIX: Let the sync function decide which branches to activate ───
+  const syncResult = await BranchService.syncBranchActivationToPlan(id);
+
+  return {
+    message: "Tenant activated successfully",
+    branchesActivated: syncResult.activated.length,
+    branchesLocked: syncResult.locked.length,
+  };
 };
 
 const getTenantAnalytics = async (id: string) => {
@@ -151,7 +239,7 @@ const getTenantAnalytics = async (id: string) => {
   const [membersByRole, invitationsByStatus] = await Promise.all([
     prisma.user.groupBy({
       by: ["role"],
-      where: { tenantId: id },
+      where: { tenantId: id, isDeleted: false },
       _count: { _all: true },
     }),
     prisma.invitation.groupBy({

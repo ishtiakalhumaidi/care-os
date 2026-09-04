@@ -9,7 +9,14 @@ export const userFilterableFields = [
 ];
 
 export const meIncludeConfig: Prisma.UserInclude = {
-  branch: { select: { id: true, name: true } },
+  branch: {
+    select: {
+      id: true,
+      name: true,
+      isActive: true,      
+      deletedAt: true,     
+    },
+  },
   classroom: { select: { id: true, name: true } },
   guardianProfile: {
     include: {

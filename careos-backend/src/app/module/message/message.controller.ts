@@ -18,7 +18,11 @@ const getMyConversations = catchAsync(async (req: Request, res: Response) => {
 
 const getConversation = catchAsync(async (req: Request, res: Response) => {
   const { childId } = req.params;
-  const result = await MessageService.getOrCreateConversation(childId as string);
+  const result = await MessageService.getOrCreateConversation(
+    childId as string,
+    req.user!.id,
+    req.user!.role,
+  );
 
   sendResponse(res, {
     httpStatusCode: status.OK,
@@ -30,9 +34,13 @@ const getConversation = catchAsync(async (req: Request, res: Response) => {
 
 const getMessages = catchAsync(async (req: Request, res: Response) => {
   const { conversationId } = req.params;
-  const userId = req.user!.id;
+  const user = req.user!;
 
-  const result = await MessageService.getMessages(conversationId as string, userId);
+  const result = await MessageService.getMessages(
+    conversationId as string,
+    user.id,
+    user.role,
+  );
 
   sendResponse(res, {
     httpStatusCode: status.OK,
@@ -42,10 +50,9 @@ const getMessages = catchAsync(async (req: Request, res: Response) => {
   });
 });
 
-
 const getContacts = catchAsync(async (req: Request, res: Response) => {
   const result = await MessageService.getPermittedContacts(req.user);
-  
+
   sendResponse(res, {
     httpStatusCode: status.OK,
     success: true,
@@ -53,9 +60,14 @@ const getContacts = catchAsync(async (req: Request, res: Response) => {
     data: result,
   });
 });
+
 const createClassroomMessage = catchAsync(async (req: Request, res: Response) => {
   const { classroomId } = req.body;
-  const result = await MessageService.getOrCreateClassroomConversation(classroomId);
+  const result = await MessageService.getOrCreateClassroomConversation(
+    classroomId,
+    req.user!.id,
+    req.user!.role,
+  );
 
   sendResponse(res, {
     httpStatusCode: status.OK,
@@ -64,11 +76,16 @@ const createClassroomMessage = catchAsync(async (req: Request, res: Response) =>
     data: result,
   });
 });
+
 const createDirectMessage = catchAsync(async (req: Request, res: Response) => {
   const { targetId } = req.body;
-  const userId = req.user!.id;
-  
-  const result = await MessageService.getOrCreateDirectMessage(userId, targetId);
+  const user = req.user!;
+
+  const result = await MessageService.getOrCreateDirectMessage(
+    user.id,
+    targetId,
+    user.role,
+  );
 
   sendResponse(res, {
     httpStatusCode: status.OK,
@@ -82,7 +99,7 @@ export const MessageController = {
   getConversation,
   getMyConversations,
   getMessages,
-  getContacts, 
-  createDirectMessage ,
-  createClassroomMessage
+  getContacts,
+  createDirectMessage,
+  createClassroomMessage,
 };

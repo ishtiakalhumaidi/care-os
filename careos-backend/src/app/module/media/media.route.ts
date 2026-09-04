@@ -1,8 +1,8 @@
 import express from "express";
-import { MediaController } from "./media.controller";
-import { checkAuth } from "../../middleware/checkAuth";
-import { multerUpload } from "../../config/multer.config";
-import { Role } from "../../../generated/prisma/enums";
+import { MediaController } from "./media.controller.js";
+import { checkAuth } from "../../middleware/checkAuth.js";
+import { multerUpload } from "../../config/multer.config.js";
+import { Role } from "../../../generated/prisma/enums.js";
 
 const router = express.Router();
 

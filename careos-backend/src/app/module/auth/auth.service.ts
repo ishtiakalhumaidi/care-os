@@ -166,6 +166,38 @@ const inviteUser = async (
     throw new AppError(status.NOT_FOUND, "Tenant not found");
   }
 
+  if (!isTenantExist.isActive) {
+    throw new AppError(status.FORBIDDEN, "Tenant is suspended");
+  }
+
+  const branch = await prisma.branch.findUnique({
+    where: { id: payload.branchId },
+  });
+  if (!branch || branch.tenantId !== payload.tenantId) {
+    throw new AppError(status.NOT_FOUND, "Branch not found");
+  }
+  if (!branch.isActive || branch.deletedAt) {
+    throw new AppError(status.FORBIDDEN, "This branch is no longer active");
+  }
+
+  if (payload.classroomId) {
+    const classroom = await prisma.classroom.findUnique({
+      where: { id: payload.classroomId },
+    });
+    if (!classroom || classroom.branchId !== payload.branchId) {
+      throw new AppError(status.BAD_REQUEST, "Invalid classroom for this branch");
+    }
+  }
+
+  if (payload.childId) {
+    const child = await prisma.child.findUnique({
+      where: { id: payload.childId },
+    });
+    if (!child || child.branchId !== payload.branchId || child.tenantId !== payload.tenantId) {
+      throw new AppError(status.BAD_REQUEST, "Invalid child for this branch");
+    }
+  }
+
   const isUserExist = await prisma.user.findUnique({
     where: { email: payload.email },
   });
@@ -249,6 +281,40 @@ const acceptInvite = async (payload: IAcceptInvitePayload) => {
     );
   }
 
+  const tenant = await prisma.tenant.findUnique({
+    where: { id: invitation.tenantId },
+  });
+  if (!tenant || !tenant.isActive) {
+    throw new AppError(status.FORBIDDEN, "This organization is no longer active");
+  }
+
+  if (invitation.branchId) {
+    const branch = await prisma.branch.findUnique({
+      where: { id: invitation.branchId },
+    });
+    if (!branch || !branch.isActive || branch.deletedAt || branch.tenantId !== invitation.tenantId) {
+      throw new AppError(status.FORBIDDEN, "The branch for this invitation is no longer available");
+    }
+  }
+
+  if (invitation.classroomId) {
+    const classroom = await prisma.classroom.findUnique({
+      where: { id: invitation.classroomId },
+    });
+    if (!classroom || classroom.branchId !== invitation.branchId) {
+      throw new AppError(status.BAD_REQUEST, "Invalid invitation: classroom no longer exists in this branch");
+    }
+  }
+
+  if (invitation.childId) {
+    const child = await prisma.child.findUnique({
+      where: { id: invitation.childId },
+    });
+    if (!child || child.branchId !== invitation.branchId || child.tenantId !== invitation.tenantId) {
+      throw new AppError(status.BAD_REQUEST, "Invalid invitation: child no longer exists in this branch");
+    }
+  }
+
   const isUserExist = await prisma.user.findUnique({
     where: { email: invitation.email },
   });
@@ -259,6 +325,7 @@ const acceptInvite = async (payload: IAcceptInvitePayload) => {
       "An account with this email already exists",
     );
   }
+
   await auth.api.signUpEmail({
     body: {
       email: invitation.email,
@@ -266,6 +333,7 @@ const acceptInvite = async (payload: IAcceptInvitePayload) => {
       name: payload.name,
     },
   });
+
   const updatedUser = await prisma.user.update({
     where: { email: invitation.email },
     data: {
@@ -312,6 +380,7 @@ const loginUser = async (payload: ILoginPayload) => {
 
   const user = await prisma.user.findUnique({
     where: { email: payload.email },
+    include: { tenant: true, branch: true }, // ← FIX: need branch status
   });
 
   if (!user) {
@@ -325,17 +394,14 @@ const loginUser = async (payload: ILoginPayload) => {
   if (!user.isActive) {
     throw new AppError(status.FORBIDDEN, "This account has been suspended");
   }
-  if (user.tenantId) {
-    const tenant = await prisma.tenant.findUnique({
-      where: { id: user.tenantId },
-    });
 
-    if (tenant && !tenant.isActive) {
+  if (user.tenant) {
+    if (!user.tenant.isActive) {
       if (user.role === ENUM_USER_ROLE.TENANT_OWNER) {
         throw new AppError(
           status.FORBIDDEN,
           `Your CareOS subscription has been suspended${
-            tenant.suspensionReason ? `: ${tenant.suspensionReason}` : ""
+            user.tenant.suspensionReason ? `: ${user.tenant.suspensionReason}` : ""
           }. Please contact CareOS support for assistance.`,
         );
       }
@@ -345,6 +411,14 @@ const loginUser = async (payload: ILoginPayload) => {
       );
     }
   }
+
+  if (user.branch && !user.branch.isActive) {
+    throw new AppError(
+      status.FORBIDDEN,
+      "Your branch has been deactivated. Please contact your administrator.",
+    );
+  }
+
   const tokens = TokenUtils.generateAuthTokens(user);
 
   return { user, ...tokens };
@@ -360,14 +434,23 @@ const refreshAccessToken = async (refreshToken: string) => {
 
   const user = await prisma.user.findUnique({
     where: { id: decoded.userId },
+    include: { tenant: true, branch: true }, 
   });
 
   if (!user || user.isDeleted || !user.isActive) {
     throw new AppError(status.UNAUTHORIZED, "Invalid session");
   }
 
+  if (user.tenant && !user.tenant.isActive) {
+    throw new AppError(status.UNAUTHORIZED, "Invalid session");
+  }
+  if (user.branch && !user.branch.isActive) {
+    throw new AppError(status.UNAUTHORIZED, "Invalid session");
+  }
+
   return TokenUtils.generateAuthTokens(user);
 };
+
 const getAllInvitations = async (
   query: IQuery,
   tenantId: string,

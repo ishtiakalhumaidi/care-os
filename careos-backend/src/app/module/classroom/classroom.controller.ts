@@ -6,9 +6,13 @@ import AppError from "../../errorHelpers/AppError.js";
 
 const createClassroom = catchAsync(async (req, res) => {
   const tenantId = req.user!.tenantId;
+  const staffBranchId =
+    req.user!.role === "TENANT_OWNER" ? undefined : (req.user!.branchId as string);
+
   const result = await ClassroomService.createClassroom(
     req.body,
     tenantId as string,
+    staffBranchId,
   );
 
   sendResponse(res, {
@@ -21,9 +25,13 @@ const createClassroom = catchAsync(async (req, res) => {
 
 const getAllClassrooms = catchAsync(async (req, res) => {
   const tenantId = req.user!.tenantId;
+  const staffBranchId =
+    req.user!.role === "TENANT_OWNER" ? undefined : (req.user!.branchId as string);
+
   const result = await ClassroomService.getAllClassrooms(
     req.query,
     tenantId as string,
+    staffBranchId,
   );
 
   sendResponse(res, {
@@ -38,6 +46,8 @@ const getAllClassrooms = catchAsync(async (req, res) => {
 const getClassroomById = catchAsync(async (req, res) => {
   const { id } = req.params;
   const tenantId = req.user!.tenantId as string;
+  const staffBranchId =
+    req.user!.role === "TENANT_OWNER" ? undefined : (req.user!.branchId as string);
 
   if (req.user!.role === "TEACHER") {
     const isAssigned = await ClassroomService.isTeacherAssigned(id as string, req.user!.id);
@@ -46,7 +56,11 @@ const getClassroomById = catchAsync(async (req, res) => {
     }
   }
 
-  const result = await ClassroomService.getClassroomById(id as string, tenantId);
+  const result = await ClassroomService.getClassroomById(
+    id as string,
+    tenantId,
+    staffBranchId,
+  );
 
   sendResponse(res, {
     httpStatusCode: status.OK,
@@ -84,10 +98,14 @@ const getMyClassroomById = catchAsync(async (req, res) => {
 const updateClassroom = catchAsync(async (req, res) => {
   const { id } = req.params;
   const tenantId = req.user!.tenantId;
+  const staffBranchId =
+    req.user!.role === "TENANT_OWNER" ? undefined : (req.user!.branchId as string);
+
   const result = await ClassroomService.updateClassroom(
     id as string,
     req.body,
     tenantId as string,
+    staffBranchId,
   );
 
   sendResponse(res, {
@@ -101,9 +119,13 @@ const updateClassroom = catchAsync(async (req, res) => {
 const deleteClassroom = catchAsync(async (req, res) => {
   const { id } = req.params;
   const tenantId = req.user!.tenantId;
+  const staffBranchId =
+    req.user!.role === "TENANT_OWNER" ? undefined : (req.user!.branchId as string);
+
   const result = await ClassroomService.deleteClassroom(
     id as string,
     tenantId as string,
+    staffBranchId,
   );
 
   sendResponse(res, {
@@ -118,9 +140,8 @@ const assignTeacher = catchAsync(async (req, res) => {
   const { id } = req.params;
   const tenantId = req.user!.tenantId as string;
   const staffBranchId =
-    req.user!.role === "TENANT_OWNER"
-      ? undefined
-      : (req.user!.branchId as string);
+    req.user!.role === "TENANT_OWNER" ? undefined : (req.user!.branchId as string);
+
   const result = await ClassroomService.assignTeacher(
     id as string,
     req.body,
@@ -140,9 +161,8 @@ const unassignTeacher = catchAsync(async (req, res) => {
   const { id, userId } = req.params;
   const tenantId = req.user!.tenantId as string;
   const staffBranchId =
-    req.user!.role === "TENANT_OWNER"
-      ? undefined
-      : (req.user!.branchId as string);
+    req.user!.role === "TENANT_OWNER" ? undefined : (req.user!.branchId as string);
+
   await ClassroomService.unassignTeacher(
     id as string,
     userId as string,

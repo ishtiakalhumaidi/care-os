@@ -18,7 +18,6 @@ export const checkAuth = (...requiredRoles: Role[]) => {
       }
 
       const token = authHeader.split(" ")[1];
-      console.log("Token received in checkAuth middleware:", token);
 
       let decoded: JwtPayload;
       try {
@@ -31,6 +30,7 @@ export const checkAuth = (...requiredRoles: Role[]) => {
 
       const user = await prisma.user.findUnique({
         where: { id: userId },
+        include: { tenant: true, branch: true }, 
       });
 
       if (!user) {
@@ -48,6 +48,22 @@ export const checkAuth = (...requiredRoles: Role[]) => {
         throw new AppError(status.FORBIDDEN, "This user account is suspended.");
       }
 
+      if (user.tenant) {
+        if (!user.tenant.isActive) {
+          throw new AppError(
+            status.FORBIDDEN,
+            "Your organization account has been suspended. Please contact support.",
+          );
+        }
+      }
+
+      if (user.branch && !user.branch.isActive) {
+        throw new AppError(
+          status.FORBIDDEN,
+          "Your branch has been deactivated. Please contact your administrator.",
+        );
+      }
+
       if (
         user.needPasswordChange &&
         req.originalUrl !== "/api/v1/auth/resolve-password-change"
@@ -58,7 +74,6 @@ export const checkAuth = (...requiredRoles: Role[]) => {
         );
       }
 
-      // 4. Role Authorization
       if (requiredRoles.length && !requiredRoles.includes(user.role)) {
         throw new AppError(
           status.FORBIDDEN,

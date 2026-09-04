@@ -4,7 +4,7 @@ export const classroomSearchableFields = ["name", "ageGroup"];
 export const classroomFilterableFields = ["branchId"];
 
 export const classroomListIncludeConfig: Prisma.ClassroomInclude = {
-  branch: { select: { id: true, name: true } },
+  branch: { select: { id: true, name: true, isActive: true, deletedAt: true } },
   _count: {
     select: {
       children: { where: { status: "ENROLLED" } },
@@ -14,7 +14,7 @@ export const classroomListIncludeConfig: Prisma.ClassroomInclude = {
 };
 
 export const classroomDetailIncludeConfig: Prisma.ClassroomInclude = {
-  branch: { select: { id: true, name: true, tenantId: true } },
+  branch: { select: { id: true, name: true, tenantId: true, isActive: true, deletedAt: true } }, 
   teacherAssignments: {
     include: {
       teacher: { select: { id: true, name: true, email: true, role: true } },

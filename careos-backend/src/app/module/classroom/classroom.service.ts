@@ -10,16 +10,29 @@ import {
 } from "./classroom.constant.js";
 import type { IAssignTeacherPayload } from "./classroom.interface.js";
 
-const createClassroom = async (payload: any, tenantId: string) => {
+const assertBranchActive = (
+  branch: { isActive: boolean; deletedAt?: Date | null },
+  label = "Branch",
+) => {
+  if (!branch.isActive || branch.deletedAt) {
+    throw new AppError(status.FORBIDDEN, `${label} is deactivated or deleted`);
+  }
+};
+
+const createClassroom = async (payload: any, tenantId: string, staffBranchId?: string) => {
   const branch = await prisma.branch.findUnique({
     where: { id: payload.branchId },
   });
 
-  if (!branch || !branch.isActive || branch.tenantId !== tenantId) {
+  if (!branch || !branch.isActive || branch.deletedAt || branch.tenantId !== tenantId) {
     throw new AppError(
       status.FORBIDDEN,
-      "Invalid branch assignment. You do not have access to this branch.",
+      "Invalid or deactivated branch. You cannot add classrooms here.",
     );
+  }
+
+  if (staffBranchId && payload.branchId !== staffBranchId) {
+    throw new AppError(status.FORBIDDEN, "You do not have access to this branch");
   }
 
   return prisma.classroom.create({ data: payload });
@@ -28,12 +41,19 @@ const createClassroom = async (payload: any, tenantId: string) => {
 const getAllClassrooms = async (
   query: Record<string, any>,
   tenantId: string,
+  staffBranchId?: string,
 ) => {
-  const tenantBranches = await prisma.branch.findMany({
-    where: { tenantId },
-    select: { id: true },
-  });
-  const branchIds = tenantBranches.map((b) => b.id);
+  let branchIds: string[];
+
+  if (staffBranchId) {
+    branchIds = [staffBranchId];
+  } else {
+    const tenantBranches = await prisma.branch.findMany({
+      where: { tenantId, isActive: true, deletedAt: null },
+      select: { id: true },
+    });
+    branchIds = tenantBranches.map((b) => b.id);
+  }
 
   if (query.branchId && !branchIds.includes(query.branchId)) {
     throw new AppError(
@@ -63,7 +83,7 @@ const getAllClassrooms = async (
   return result;
 };
 
-const getClassroomById = async (id: string, tenantId: string) => {
+const getClassroomById = async (id: string, tenantId: string, staffBranchId?: string) => {
   const classroom = await prisma.classroom.findUnique({
     where: { id },
     include: classroomDetailIncludeConfig,
@@ -78,17 +98,30 @@ const getClassroomById = async (id: string, tenantId: string) => {
       "You do not have access to this classroom",
     );
   }
+  if (classroom.branch.deletedAt) {
+    throw new AppError(status.FORBIDDEN, "This classroom's branch has been deleted");
+  }
+  assertBranchActive(classroom.branch);
+
+  if (staffBranchId && classroom.branchId !== staffBranchId) {
+    throw new AppError(status.FORBIDDEN, "You do not have access to this classroom");
+  }
 
   return classroom;
 };
 
 const getMyClassrooms = async (teacherId: string) => {
   const assignments = await prisma.classroomTeacher.findMany({
-    where: { teacherId },
+    where: {
+      teacherId,
+      classroom: {
+        branch: { isActive: true, deletedAt: null },
+      },
+    },
     include: {
       classroom: {
         include: {
-          branch: { select: { id: true, name: true } },
+          branch: { select: { id: true, name: true, isActive: true } },
           children: {
             where: { status: "ENROLLED" },
             select: {
@@ -126,7 +159,7 @@ const getMyClassroomById = async (classroomId: string, teacherId: string) => {
   const classroom = await prisma.classroom.findUnique({
     where: { id: classroomId },
     include: {
-      branch: { select: { id: true, name: true } },
+      branch: { select: { id: true, name: true, isActive: true, deletedAt: true } },
       teacherAssignments: {
         include: { teacher: { select: { id: true, name: true, email: true } } },
       },
@@ -146,11 +179,12 @@ const getMyClassroomById = async (classroomId: string, teacherId: string) => {
   if (!classroom) {
     throw new AppError(status.NOT_FOUND, "Classroom not found");
   }
-  
+  assertBranchActive(classroom.branch);
+
   return classroom;
 };
 
-const updateClassroom = async (id: string, payload: any, tenantId: string) => {
+const updateClassroom = async (id: string, payload: any, tenantId: string, staffBranchId?: string) => {
   const classroom = await prisma.classroom.findUnique({
     where: { id },
     include: { branch: true },
@@ -159,23 +193,31 @@ const updateClassroom = async (id: string, payload: any, tenantId: string) => {
   if (!classroom || classroom.branch.tenantId !== tenantId) {
     throw new AppError(status.NOT_FOUND, "Classroom not found or unauthorized");
   }
+  assertBranchActive(classroom.branch);
+
+  if (staffBranchId && classroom.branchId !== staffBranchId) {
+    throw new AppError(status.FORBIDDEN, "You do not have access to this classroom");
+  }
 
   if (payload.branchId && payload.branchId !== classroom.branchId) {
     const newBranch = await prisma.branch.findUnique({
       where: { id: payload.branchId },
     });
-    if (!newBranch || !newBranch.isActive || newBranch.tenantId !== tenantId) {
+    if (!newBranch || !newBranch.isActive || newBranch.deletedAt || newBranch.tenantId !== tenantId) {
       throw new AppError(
         status.FORBIDDEN,
-        "Cannot move classroom to an unauthorized branch",
+        "Cannot move classroom to an unauthorized or deactivated branch",
       );
+    }
+    if (staffBranchId && payload.branchId !== staffBranchId) {
+      throw new AppError(status.FORBIDDEN, "Cannot move classroom to another branch");
     }
   }
 
   return prisma.classroom.update({ where: { id }, data: payload });
 };
 
-const deleteClassroom = async (id: string, tenantId: string) => {
+const deleteClassroom = async (id: string, tenantId: string, staffBranchId?: string) => {
   const classroom = await prisma.classroom.findUnique({
     where: { id },
     include: {
@@ -188,6 +230,11 @@ const deleteClassroom = async (id: string, tenantId: string) => {
 
   if (!classroom || classroom.branch.tenantId !== tenantId) {
     throw new AppError(status.NOT_FOUND, "Classroom not found or unauthorized");
+  }
+  assertBranchActive(classroom.branch);
+
+  if (staffBranchId && classroom.branchId !== staffBranchId) {
+    throw new AppError(status.FORBIDDEN, "You do not have access to this classroom");
   }
 
   if (
@@ -218,6 +265,8 @@ const assignTeacher = async (
   if (!classroom || classroom.branch.tenantId !== tenantId) {
     throw new AppError(status.NOT_FOUND, "Classroom not found");
   }
+  assertBranchActive(classroom.branch);
+
   if (staffBranchId && classroom.branchId !== staffBranchId) {
     throw new AppError(
       status.FORBIDDEN,
@@ -230,6 +279,9 @@ const assignTeacher = async (
   });
   if (!teacher || teacher.tenantId !== tenantId || teacher.role !== "TEACHER") {
     throw new AppError(status.BAD_REQUEST, "Invalid teacher account");
+  }
+  if (!teacher.isActive || teacher.isDeleted) {
+    throw new AppError(status.BAD_REQUEST, "Teacher account is inactive or deleted");
   }
   if (teacher.branchId !== classroom.branchId) {
     throw new AppError(
@@ -310,12 +362,14 @@ const unassignTeacher = async (
 
   return null;
 };
+
 const isTeacherAssigned = async (classroomId: string, teacherId: string) => {
   const assignment = await prisma.classroomTeacher.findUnique({
     where: { classroomId_teacherId: { classroomId, teacherId } },
   });
   return !!assignment;
 };
+
 export const ClassroomService = {
   createClassroom,
   getAllClassrooms,

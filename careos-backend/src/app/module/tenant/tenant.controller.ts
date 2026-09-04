@@ -23,10 +23,7 @@ const getAllTenants = catchAsync(async (req: Request, res: Response) => {
 const getTenantById = catchAsync(async (req: Request, res: Response) => {
   const { id } = req.params;
   if (req.user!.role === "TENANT_OWNER" && req.user!.tenantId !== id) {
-    throw new AppError(
-      status.FORBIDDEN,
-      "You do not have access to this tenant",
-    );
+    throw new AppError(status.FORBIDDEN, "You do not have access to this tenant");
   }
 
   const result = await TenantService.getTenantById(id as string);
@@ -41,23 +38,23 @@ const getTenantById = catchAsync(async (req: Request, res: Response) => {
 const updateTenant = catchAsync(async (req: Request, res: Response) => {
   const { id } = req.params;
   if (req.user!.role === "TENANT_OWNER" && req.user!.tenantId !== id) {
-    throw new AppError(
-      status.FORBIDDEN,
-      "You do not have access to this tenant",
-    );
+    throw new AppError(status.FORBIDDEN, "You do not have access to this tenant");
   }
 
   const payload = req.body;
 
   if (req.file) {
-    const result = await uploadToCloudinary(
-      req.file.buffer,
-      `tenants/${id}/logo`,
-    );
+    const result = await uploadToCloudinary(req.file.buffer, `tenants/${id}/logo`);
     payload.logoUrl = result.secure_url;
   }
 
-  const result = await TenantService.updateTenant(id as string, payload);
+  // ← FIX: pass role so service can reject planId changes by owner
+  const result = await TenantService.updateTenant(
+    id as string,
+    payload,
+    req.user!.role,
+  );
+
   sendResponse(res, {
     httpStatusCode: status.OK,
     success: true,

@@ -1,5 +1,5 @@
 model Branch {
-  id         String      @id @default(uuid())
+  id         String  @id @default(uuid())
   name       String
   address    String
   city       String?
@@ -16,6 +16,7 @@ model Branch {
 
   timezone   String      @default("UTC")
   isActive   Boolean     @default(true)
+  deletedAt  DateTime?
   tenantId   String
   tenant     Tenant      @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   createdAt  DateTime    @default(now())

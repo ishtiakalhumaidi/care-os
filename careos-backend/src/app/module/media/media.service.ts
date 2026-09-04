@@ -1,5 +1,5 @@
 import status from "http-status";
-import AppError from "../../errorHelpers/AppError";
+import AppError from "../../errorHelpers/AppError.js";
 import { prisma } from "../../lib/prisma.js";
 import { v2 as cloudinary } from "cloudinary";
 

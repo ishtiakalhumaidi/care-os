@@ -1,11 +1,11 @@
 import { Request, Response } from "express";
-import { MediaService } from "./media.service";
-import { catchAsync } from "../../shared/catchAsync";
-import AppError from "../../errorHelpers/AppError";
+import { MediaService } from "./media.service.js";
+import { catchAsync } from "../../shared/catchAsync.js";
+import AppError from "../../errorHelpers/AppError.js";
 import status from "http-status";
-import { sendResponse } from "../../shared/sendResponse";
+import { sendResponse } from "../../shared/sendResponse.js";
 import { v2 as cloudinary } from "cloudinary";
-import { prisma } from "../../lib/prisma";
+import { prisma } from "../../lib/prisma.js";
 
 const uploadMedia = catchAsync(async (req: Request, res: Response) => {
   const { childId } = req.params;

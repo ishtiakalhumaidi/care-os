@@ -38,7 +38,7 @@
     "jsonwebtoken": "^9.0.3",
     "multer": "^2.2.0",
     "nodemailer": "^9.0.3",
-    "pdfmake": "^0.3.11",
+    "pdfmake": "0.2.20",
     "pg": "^8.22.0",
     "resend": "^6.17.2",
     "socket.io": "^4.8.3",
