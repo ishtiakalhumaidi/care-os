@@ -12,7 +12,12 @@ export default async function StudentsManagementPage() {
   return (
     <HydrationBoundary state={dehydrate(queryClient)}>
       <div className="space-y-6">
-        <h2 className="text-2xl font-bold tracking-tight text-foreground">Students</h2>
+        <div>
+          <h2 className="text-2xl font-bold tracking-tight text-foreground">Students</h2>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Manage applications, enrollments, and status across all branches.
+          </p>
+        </div>
         <StudentsTable basePath="/owner/dashboard/students-management" />
       </div>
     </HydrationBoundary>

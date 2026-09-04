@@ -1,5 +1,6 @@
 import React from "react";
 import GuardianBillingView from "@/components/dashboard/guardian/billing/GuardianBillingView";
+import BillingPageHeader from "@/components/dashboard/guardian/billing/BillingPageHeader";
 import { getMe } from "@/services/user.services";
 import { redirect } from "next/navigation";
 
@@ -11,14 +12,8 @@ export default async function GuardianBillingPage() {
   }
 
   return (
-    <div className="space-y-6 max-w-5xl mx-auto">
-      <div>
-        <h2 className="text-2xl font-bold tracking-tight text-foreground">Tuition & Billing</h2>
-        <p className="text-sm text-muted-foreground">
-          Manage your payments. Split-custody math is calculated automatically based on your profile settings.
-        </p>
-      </div>
-
+    <div className="mx-auto max-w-5xl space-y-6 px-4 py-6 sm:px-6 lg:px-8">
+      <BillingPageHeader />
       <GuardianBillingView />
     </div>
   );

@@ -50,6 +50,7 @@ export interface IBranch {
   timezone?: string;
   tenantId: string;
   isActive: boolean;
+  deletedAt: string;
   createdAt: string;
   updatedAt?: string;
 }
@@ -59,7 +60,9 @@ export const getLiveRatioMetrics = async (branchId: string) => {
     const response = await serverApi.get(`/branches/${branchId}/live-ratio`);
     return response.data;
   } catch (error: any) {
-    throw new Error(error.response?.data?.message || "Failed to fetch live ratio");
+    throw new Error(
+      error.response?.data?.message || "Failed to fetch live ratio",
+    );
   }
 };
 

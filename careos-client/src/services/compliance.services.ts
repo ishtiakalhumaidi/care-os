@@ -22,16 +22,16 @@ export const downloadComplianceReport = async (params: ComplianceReportParams) =
     
     return { success: true, base64Data: base64 };
   } catch (error: any) {
-    // 1. Check if the error response contains binary data
+  
     if (error.response?.data) {
       try {
-        // 2. Decode the binary buffer back into a UTF-8 string
+    
         const errorText = Buffer.from(error.response.data).toString("utf8");
-        // 3. Parse the JSON to extract the real backend message
+  
         const errorJson = JSON.parse(errorText);
         throw new Error(errorJson.message || "Backend error generating PDF");
       } catch (parseError) {
-        // Fallback if the backend completely crashed and returned HTML/Text
+
         throw new Error(`Server Error: ${error.message}`);
       }
     }

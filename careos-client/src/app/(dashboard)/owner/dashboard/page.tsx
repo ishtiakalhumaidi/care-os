@@ -1,23 +1,22 @@
 import { dehydrate, HydrationBoundary, QueryClient } from "@tanstack/react-query";
 import { getMe } from "@/services/user.services";
-import { getTenantById } from "@/services/tenant.services";
+import { getDashboard } from "@/services/dashboard.services";
 import { redirect } from "next/navigation";
-import OwnerDashboardContent from "@/components/dashboard/owner/OwnerDashboardContent";
+import DashboardContent from "@/components/dashboard/DashboardContent";
 
 export default async function OwnerDashboardPage() {
   const user = await getMe();
   if (!user) redirect("/login");
-  const tenantId = user.tenantId as string;
 
   const queryClient = new QueryClient();
   await queryClient.prefetchQuery({
-    queryKey: ["tenants", tenantId],
-    queryFn: () => getTenantById(tenantId).then((res) => res.data),
+    queryKey: ["dashboard", "7d"],
+    queryFn: () => getDashboard("7d"),
   });
 
   return (
     <HydrationBoundary state={dehydrate(queryClient)}>
-      <OwnerDashboardContent tenantId={tenantId} />
+      <DashboardContent />
     </HydrationBoundary>
   );
 }

@@ -24,32 +24,46 @@ export default async function BillingPage() {
 
   return (
     <HydrationBoundary state={dehydrate(queryClient)}>
-      <div className="space-y-10 max-w-6xl mx-auto">
-        
-        {/* Guardian Tuition Invoicing */}
-        <div>
-          <div className="flex items-center justify-between mb-6">
+      <div className="mx-auto max-w-6xl space-y-10">
+        {/* Student Invoicing */}
+        <section>
+          <div className="mb-6 flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">
             <div>
-              <h2 className="text-2xl font-bold tracking-tight text-foreground">Student Invoicing</h2>
-              <p className="text-sm text-muted-foreground">Generate tuition invoices. The system will automatically split costs for shared custody.</p>
+              <h2 className="text-2xl font-bold tracking-tight text-foreground">
+                Student Invoicing
+              </h2>
+              <p className="mt-1 text-sm text-muted-foreground">
+                Generate tuition invoices. Costs auto-split for shared custody.
+              </p>
             </div>
             <CreateInvoiceDialog />
           </div>
-          
           <TenantInvoicesTable />
+        </section>
+
+        <div className="relative">
+          <div className="absolute inset-0 flex items-center">
+            <span className="w-full border-t" />
+          </div>
+          <div className="relative flex justify-center text-xs uppercase">
+            <span className="bg-background px-2 text-muted-foreground">
+              Platform Subscription
+            </span>
+          </div>
         </div>
 
-        <hr className="border-border" />
-
-        {/*  Center SaaS Subscription */}
-        <div>
+        {/* Center Subscription */}
+        <section>
           <div className="mb-6">
-            <h2 className="text-2xl font-bold tracking-tight text-foreground">Center Subscription</h2>
-            <p className="text-sm text-muted-foreground">Manage your CareOS platform usage and tier limits.</p>
+            <h2 className="text-2xl font-bold tracking-tight text-foreground">
+              Center Subscription
+            </h2>
+            <p className="mt-1 text-sm text-muted-foreground">
+              Manage your CareOS plan, usage limits, and billing cycle.
+            </p>
           </div>
           <TenantSettingsView tenantId={resolvedTenantId} />
-        </div>
-
+        </section>
       </div>
     </HydrationBoundary>
   );

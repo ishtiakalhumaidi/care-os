@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 "use server";
 
-import { serverApi } from "@/lib/api-client";
+import { publicApi, serverApi } from "@/lib/api-client";
 
 export interface IPlan {
   id: string;
@@ -20,6 +20,16 @@ export const getPlans = async () => {
     throw new Error(error.response?.data?.message || "Failed to fetch plans");
   }
 };
+
+export const getPublicPlans = async (): Promise<IPlan[]> => {
+  try {
+    const response = await publicApi.get("/plans");
+    return response.data.data;
+  } catch (error: any) {
+    throw new Error(error.response?.data?.message || "Failed to fetch plans");
+  }
+};
+ 
 
 export const createPlan = async (payload: Omit<IPlan, "id" | "_count">) => {
   try {

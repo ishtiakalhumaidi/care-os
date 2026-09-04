@@ -31,16 +31,16 @@ Built around strict **Role-Based Access Control (RBAC)** and complex many-to-man
 │                        CareOS Monorepo                          │
 ├─────────────────────────────┬───────────────────────────────────┤
 │      careos-client/         │         careos-backend/           │
-│    (Next.js 16 — Vercel)    │    (Node/Express — Vercel/VPS)  │
+│    (Next.js 16 — Vercel)    │    (Node/Express — Vercel/VPS)    │
 │                             │                                   │
-│  ┌─────────────────────┐   │  ┌─────────────────────────────┐  │
-│  │  App Router (Next)  │   │  │  Express 5 + TypeScript     │  │
-│  │  Tailwind CSS v4    │   │  │  Prisma ORM + PostgreSQL    │  │
-│  │  shadcn/ui (Base)   │   │  │  Better Auth (RBAC)         │  │
-│  │  Framer Motion      │   │  │  Zod Validation             │  │
-│  │  TanStack Query     │   │  │  Cloudinary (Media)         │  │
-│  │  TanStack Form      │   │  │  Resend/Nodemailer (Email)  │  │
-│  └─────────────────────┘   │  └─────────────────────────────┘  │
+│  ┌─────────────────────┐    │  ┌─────────────────────────────┐  │
+│  │  App Router (Next)  │    │  │  Express 5 + TypeScript     │  │
+│  │  Tailwind CSS v4    │    │  │  Prisma ORM + PostgreSQL    │  │
+│  │  shadcn/ui (Base)   │    │  │  Better Auth (RBAC)         │  │
+│  │  Framer Motion      │    │  │  Zod Validation             │  │
+│  │  TanStack Query     │    │  │  Cloudinary (Media)         │  │
+│  │  TanStack Form      │    │  │  Resend/Nodemailer (Email)  │  │
+│  └─────────────────────┘    │  └─────────────────────────────┘  │
 │                             │                                   │
 │  Role-based dashboards:     │  Modular domain architecture:     │
 │  • Owner / Center Admin     │  • Route → Controller → Service   │

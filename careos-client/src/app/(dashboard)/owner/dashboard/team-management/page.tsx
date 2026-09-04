@@ -13,13 +13,11 @@ export default async function TeamManagementPage() {
   return (
     <HydrationBoundary state={dehydrate(queryClient)}>
       <div className="space-y-6">
-        <div className="flex items-center justify-between">
-          <div>
-            <h2 className="text-2xl font-bold tracking-tight text-foreground">Team</h2>
-            <p className="text-sm text-muted-foreground">
-              Invite center admins, teachers, and guardians to your organization.
-            </p>
-          </div>
+        <div>
+          <h2 className="text-2xl font-bold tracking-tight text-foreground">Team</h2>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Invite center admins, teachers, and guardians to your organization.
+          </p>
         </div>
         <TeamManagement />
       </div>

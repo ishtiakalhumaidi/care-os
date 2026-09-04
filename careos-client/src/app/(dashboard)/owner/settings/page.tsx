@@ -18,11 +18,16 @@ export default async function TenantSettingsPage() {
 
   return (
     <HydrationBoundary state={dehydrate(queryClient)}>
-      <div className="space-y-6">
+      <div className="mx-auto max-w-4xl space-y-8">
         <div>
-          <h2 className="text-2xl font-bold tracking-tight text-foreground">Settings</h2>
-          <p className="text-sm text-muted-foreground">Manage your center&apos;s profile.</p>
+          <h2 className="text-2xl font-bold tracking-tight text-foreground">
+            Settings
+          </h2>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Manage your center&apos;s profile, contact details, and branding.
+          </p>
         </div>
+
         <TenantOverviewCard tenantId={tenantId} />
         <TenantProfileForm tenantId={tenantId} />
       </div>

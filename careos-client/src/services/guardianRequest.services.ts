@@ -8,9 +8,16 @@ export interface IGuardianRequest {
   email: string;
   relationship: string;
   canPickup: boolean;
+
   status: "PENDING" | "ACCEPTED" | "EXPIRED" | "DENIED";
   createdAt: string;
-  child: { id: string; firstName: string; lastName: string; branchId: string };
+  child: {
+    id: string;
+    firstName: string;
+    lastName: string;
+    childCode: string;
+    branchId: string;
+  };
   requestedBy: { id: string; name: string; email: string };
 }
 

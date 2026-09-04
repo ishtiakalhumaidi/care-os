@@ -14,44 +14,47 @@ export default async function BranchesManagementPage({
 }) {
   const queryParamsObjects = await searchParams;
 
-  // Construct the exact query string your backend QueryBuilder expects
-  const queryString = Object.keys(queryParamsObjects)
-    .map((key) => {
-      const value = queryParamsObjects[key];
-      if (value === undefined) return "";
-      if (Array.isArray(value)) {
-        return value
-          .map(
-            (item) => `${encodeURIComponent(key)}=${encodeURIComponent(item)}`,
-          )
-          .join("&");
-      }
-      return `${encodeURIComponent(key)}=${encodeURIComponent(value)}`;
-    })
-    .filter(Boolean)
-    .join("&");
+  const params = new URLSearchParams();
+
+  Object.entries(queryParamsObjects).forEach(([key, value]) => {
+    if (value === undefined) return;
+    if (Array.isArray(value)) {
+      value.forEach((v) => params.append(key, v));
+    } else {
+      params.set(key, value);
+    }
+  });
+
+  if (!params.has("sortBy")) params.set("sortBy", "createdAt");
+  if (!params.has("sortOrder")) params.set("sortOrder", "desc");
+  if (!params.has("limit")) params.set("limit", "10");
+  if (queryParamsObjects.includeInactive === "true") {
+    params.set("includeInactive", "true");
+  }
+
+  const queryString = params.toString();
 
   const queryClient = new QueryClient();
 
   await queryClient.prefetchQuery({
     queryKey: ["branches", queryString],
     queryFn: () => getBranches(queryString),
-    staleTime: 1000 * 60 * 5, // Cache for 5 minutes
+    staleTime: 1000 * 60 * 5,
   });
 
   return (
     <HydrationBoundary state={dehydrate(queryClient)}>
-      <div className="space-y-6">
+      <div className="space-y-8">
         <div>
-          <h2 className="text-2xl font-bold tracking-tight text-foreground">
+          <h2 className="font-display text-2xl font-bold tracking-tight text-foreground">
             Branches
           </h2>
-          <p className="text-sm text-muted-foreground">
-            Manage your physical center locations. Search by name or address.
+          <p className="mt-1 text-sm text-muted-foreground">
+            Manage your physical center locations. Locked branches are shown when
+            &quot;Show locked&quot; is enabled.
           </p>
         </div>
 
-        {/* Pass the initial query string down to the client component */}
         <BranchesTable
           initialQueryString={queryString}
           basePath="/owner/dashboard/branches-management"

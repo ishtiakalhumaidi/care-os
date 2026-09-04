@@ -17,12 +17,21 @@ export default async function RootDashboardLayout({
 
   return (
     <SidebarProvider>
-      <div className="flex min-h-screen bg-background">
-        <DashboardSidebar role={user.role} />
-        <div className="flex flex-1 flex-col min-h-screen overflow-hidden">
+      {/* Root: locked to exact viewport height, never scrolls */}
+      <div className="flex h-screen overflow-hidden bg-background">
+        {/* Sidebar: NO hidden wrapper here. The component handles mobile + desktop itself. */}
+        <div className="h-full shrink-0">
+          <DashboardSidebar role={user.role} />
+        </div>
+
+        {/* Right column: capped at viewport, column layout */}
+        <div className="flex flex-1 flex-col min-w-0 h-full overflow-hidden">
           <DashboardNavbar />
-          <main className="flex-1 overflow-y-auto bg-background p-4 md:p-6">
-            <div className="mx-auto w-full max-w-7xl">{children}</div>
+          {/* min-h-0 is required so flex can shrink this child below its content height */}
+          <main className="flex-1 min-h-0 overflow-y-auto bg-background">
+            <div className="p-4 md:p-6">
+              <div className="mx-auto w-full max-w-7xl">{children}</div>
+            </div>
           </main>
         </div>
       </div>
