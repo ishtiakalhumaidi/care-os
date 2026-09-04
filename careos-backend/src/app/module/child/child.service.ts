@@ -208,12 +208,14 @@ const selfUnlinkGuardian = async (
   const requesterLink = await prisma.childGuardian.findUnique({
     where: { childId_userId: { childId, userId: requesterId } },
   });
+  
   if (!requesterLink) {
     throw new AppError(
       status.FORBIDDEN,
       "You do not have access to this child",
     );
   }
+  
   if (!requesterLink.isPrimary) {
     throw new AppError(
       status.FORBIDDEN,
@@ -224,9 +226,11 @@ const selfUnlinkGuardian = async (
   const targetLink = await prisma.childGuardian.findUnique({
     where: { id: linkId },
   });
+  
   if (!targetLink || targetLink.childId !== childId) {
     throw new AppError(status.NOT_FOUND, "Guardian link not found");
   }
+  
   if (targetLink.isPrimary) {
     throw new AppError(
       status.FORBIDDEN,
@@ -234,9 +238,25 @@ const selfUnlinkGuardian = async (
     );
   }
 
-  await prisma.childGuardian.delete({ where: { id: linkId } });
+  await prisma.$transaction(async (tx) => {
+    await tx.childGuardian.delete({ where: { id: linkId } });
+
+
+    if (targetLink.splitPercentage > 0) {
+      await tx.childGuardian.update({
+        where: { id: requesterLink.id },
+        data: {
+          splitPercentage: {
+            increment: targetLink.splitPercentage,
+          },
+        },
+      });
+    }
+  });
+
   return null;
 };
+
 const assertReviewable = async (
   id: string,
   tenantId: string,
@@ -345,6 +365,7 @@ const approveChild = async (
     },
   });
 };
+
 const rejectChild = async (
   id: string,
   payload: IRejectChildPayload,
@@ -405,6 +426,7 @@ const linkGuardian = async (
       relationship: payload.relationship,
       isPrimary: payload.isPrimary ?? false,
       canPickup: payload.canPickup ?? true,
+      splitPercentage: 0, 
     },
   });
 };

@@ -75,18 +75,29 @@ export const initSocket = (httpServer: HttpServer, frontendUrl: string) => {
 
     // 2. Handle Sending Messages
     socket.on(
-      "send_message",
-      async (data: { conversationId: string; content: string }) => {
+     "send_message",
+      async (data: { conversationId: string; content: string; replyToId?: string }) => {
         try {
           const newMessage = await prisma.message.create({
             data: {
               content: data.content,
               conversationId: data.conversationId,
               senderId: user.id,
+              replyToId: data.replyToId || null, 
             },
             include: {
               sender: {
                 select: { id: true, name: true, image: true, role: true },
+              },
+              
+              replyTo: {
+                select: {
+                  id: true,
+                  content: true,
+                  sender: {
+                    select: { name: true },
+                  },
+                },
               },
             },
           });

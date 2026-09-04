@@ -751,6 +751,17 @@ const getMessages = async (
           lastActiveAt: true,
         },
       },
+      replyTo: {
+        select: {
+          id: true,
+          content: true,
+          sender: {
+            select: {
+              name: true,
+            },
+          },
+        },
+      },
     },
   });
 
@@ -761,7 +772,6 @@ const getMessages = async (
 
   return messages.reverse();
 };
-
 export const MessageService = {
   getUserConversations,
   getPermittedContacts,

@@ -165,7 +165,12 @@ const createChildInvoice = async (
 
 const getGuardianInvoices = async (userId: string) => {
   const guardianLinks = await prisma.childGuardian.findMany({
-    where: { userId },
+    where: { 
+      userId,
+      child: {
+        status: { not: "REJECTED" }
+      }
+    },
     include: {
       child: {
         include: {
@@ -429,7 +434,6 @@ const handleStripeWebhookEvent = async (event: Stripe.Event) => {
               },
             });
 
-            // ─── FIX: Auto-activate branches up to new plan limit ───
             const syncResult = await BranchService.syncBranchActivationToPlan(tenantId);
             if (syncResult.activated.length > 0) {
               console.log(`Unlocked ${syncResult.activated.length} branches for Tenant ${tenantId} after upgrade`);

@@ -1,33 +1,37 @@
 model Conversation {
   id              String   @id @default(uuid())
-  isDirectMessage Boolean  @default(false)     // NEW
+  isDirectMessage Boolean  @default(false) // NEW
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
-  
-  childId         String?     
-  child           Child?   @relation(fields: [childId], references: [id], onDelete: Cascade)
-  
-  messages        Message[]
-  participants    User[]   @relation("ConversationParticipants") 
-  classroomId     String?
-  classroom       Classroom? @relation(fields: [classroomId], references: [id], onDelete: Cascade)
-  
+
+  childId String?
+  child   Child?  @relation(fields: [childId], references: [id], onDelete: Cascade)
+
+  messages     Message[]
+  participants User[]     @relation("ConversationParticipants")
+  classroomId  String?
+  classroom    Classroom? @relation(fields: [classroomId], references: [id], onDelete: Cascade)
+
   @@index([childId])
   @@index([classroomId])
 }
+
 model Message {
-  id             String       @id @default(uuid())
-  content        String
-  createdAt      DateTime     @default(now())
-  readAt         DateTime?
-  isDeleted      Boolean      @default(false)
-  isEdited       Boolean      @default(false)
-  
+  id        String    @id @default(uuid())
+  content   String
+  createdAt DateTime  @default(now())
+  readAt    DateTime?
+  isDeleted Boolean   @default(false)
+  isEdited  Boolean   @default(false)
+
   conversationId String
   conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
-  
-  senderId       String
-  sender         User         @relation(fields: [senderId], references: [id])
+
+  senderId  String
+  sender    User      @relation(fields: [senderId], references: [id])
+  replyToId String?
+  replyTo   Message?  @relation("MessageReplies", fields: [replyToId], references: [id])
+  replies   Message[] @relation("MessageReplies")
 
   @@index([conversationId, createdAt])
 }

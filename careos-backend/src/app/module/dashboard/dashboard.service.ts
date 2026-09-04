@@ -71,7 +71,7 @@ const buildSuperAdminDashboard = async (
     prisma.tenant.count({ where: { isActive: true } }),
     prisma.tenant.count({ where: { suspendedAt: { not: null } } }),
     prisma.user.count({ where: { isDeleted: false } }),
-    prisma.child.count(),
+    prisma.child.count({ where: { status: { not: "REJECTED" } } }),
     prisma.branch.count({ where: { deletedAt: null } }),
     prisma.tenant.count({ where: { createdAt: { gte: recent.start } } }),
     prisma.child.count({ where: { createdAt: { gte: recent.start } } }),
@@ -98,7 +98,10 @@ const buildSuperAdminDashboard = async (
     }),
     prisma.child.count({ where: { createdAt: { gte: thirtyDaysAgo } } }),
     prisma.child.count({
-      where: { createdAt: { gte: sixtyDaysAgo, lt: thirtyDaysAgo } },
+      where: {
+        createdAt: { gte: sixtyDaysAgo, lt: thirtyDaysAgo },
+        status: { not: "REJECTED" },
+      },
     }),
   ]);
 
@@ -301,7 +304,9 @@ const buildTenantOwnerDashboard = async (
       where: { tenantId, isDeleted: false },
       _count: { id: true },
     }),
-    prisma.child.count({ where: { tenantId } }),
+    prisma.child.count({
+      where: { tenantId, status: { not: "REJECTED" } },
+    }),
     prisma.guardianRequest.count({
       where: { child: { tenantId }, status: "PENDING" },
     }),
@@ -330,7 +335,11 @@ const buildTenantOwnerDashboard = async (
       _sum: { amount: true },
     }),
     prisma.child.count({
-      where: { tenantId, createdAt: { gte: recent.start } },
+      where: {
+        tenantId,
+        createdAt: { lt: lastMonthStart },
+        status: { not: "REJECTED" },
+      },
     }),
     prisma.broadcast.findMany({
       where: { tenantId },
@@ -529,7 +538,7 @@ const buildCenterAdminDashboard = async (
     staffCount,
   ] = await Promise.all([
     prisma.classroom.count({ where: { branchId } }),
-    prisma.child.count({ where: { branchId } }),
+    prisma.child.count({ where: { branchId, status: { not: "REJECTED" } } }),
     prisma.child.groupBy({
       by: ["status"],
       where: { branchId },
@@ -576,17 +585,17 @@ const buildCenterAdminDashboard = async (
     prisma.user.count({ where: { branchId, isDeleted: false } }),
   ]);
 
-   const checkedInCount =
+  const checkedInCount =
     attendanceToday.find((a) => a.status === "CHECKED_IN")?._count.id ?? 0;
   const checkedOutCount =
     attendanceToday.find((a) => a.status === "CHECKED_OUT")?._count.id ?? 0;
-  
+
   const pendingCount = totalChildren - checkedInCount - checkedOutCount;
 
   return {
     role: Role.CENTER_ADMIN,
     period,
-     metrics: [
+    metrics: [
       { label: "Classrooms", value: classroomCount },
       { label: "Children", value: totalChildren },
       { label: "Checked In Today", value: checkedInCount },
@@ -632,7 +641,7 @@ const buildTeacherDashboard = async (
 ): Promise<IDashboardResponse> => {
   const { start: tStart } = todayRange();
 
-    const assignments = await prisma.classroomTeacher.findMany({
+  const assignments = await prisma.classroomTeacher.findMany({
     where: {
       teacherId: userId,
       classroom: {
@@ -705,8 +714,10 @@ const buildTeacherDashboard = async (
       }),
     ]);
 
-    const checkedIn = attendanceToday.find((a) => a.status === "CHECKED_IN")?._count.id ?? 0;
-  const checkedOut = attendanceToday.find((a) => a.status === "CHECKED_OUT")?._count.id ?? 0;
+  const checkedIn =
+    attendanceToday.find((a) => a.status === "CHECKED_IN")?._count.id ?? 0;
+  const checkedOut =
+    attendanceToday.find((a) => a.status === "CHECKED_OUT")?._count.id ?? 0;
 
   const notIn = childIds.length - checkedIn - checkedOut;
 
@@ -717,7 +728,7 @@ const buildTeacherDashboard = async (
       { label: "My Classrooms", value: assignments.length },
       { label: "Total Children", value: childIds.length },
       { label: "Checked In Today", value: checkedIn },
-      { label: "Not Checked In", value: notIn },  
+      { label: "Not Checked In", value: notIn },
       { label: "Pending Documents", value: pendingDocs },
     ],
     alerts:
@@ -751,7 +762,7 @@ const buildGuardianDashboard = async (
 ): Promise<IDashboardResponse> => {
   const { start: tStart } = todayRange();
 
-    const links = await prisma.childGuardian.findMany({
+  const links = await prisma.childGuardian.findMany({
     where: {
       userId,
       child: {
@@ -831,20 +842,42 @@ const buildGuardianDashboard = async (
     }),
   ]);
 
-  const totalUnpaid = myChildren.reduce(
+  const activeAndPendingChildren = myChildren.filter((child) => child.status !== "REJECTED");
+
+  const totalUnpaid = activeAndPendingChildren.reduce(
     (sum, child) => sum + child.invoices.reduce((s, inv) => s + inv.amount, 0),
     0,
   );
-  const totalPendingDocs = myChildren.reduce(
+  
+  const totalPendingDocs = activeAndPendingChildren.reduce(
     (sum, child) => sum + child.documents.length,
     0,
   );
+
+  const formattedChildren = myChildren.map((c) => ({
+    id: c.id,
+    childCode: c.childCode,
+    name: `${c.firstName} ${c.lastName}`,
+    photoUrl: c.photoUrl,
+    status: c.status,
+    classroom: c.classroom?.name ?? null,
+    todayAttendance: c.attendance[0]?.status ?? "PENDING_CHECKIN",
+    pendingDocsCount: c.documents.length,
+    unpaidTotal: c.invoices.reduce((s, i) => s + i.amount, 0),
+  }));
+
+  const categorizedChildren = {
+    pending: formattedChildren.filter((c) => c.status === "APPLIED" || c.status === "WAITLISTED"),
+    enrolled: formattedChildren.filter((c) => c.status === "ENROLLED"),
+    suspended: formattedChildren.filter((c) => c.status === "SUSPENDED"),
+    rejected: formattedChildren.filter((c) => c.status === "REJECTED"),
+  };
 
   return {
     role: Role.GUARDIAN,
     period,
     metrics: [
-      { label: "My Children", value: myChildren.length },
+      { label: "My Children", value: activeAndPendingChildren.length },
       { label: "Unpaid Invoices", value: `$${totalUnpaid.toFixed(2)}` },
       { label: "Documents to Sign", value: totalPendingDocs },
     ],
@@ -859,17 +892,7 @@ const buildGuardianDashboard = async (
         : [],
     recents: [],
     details: {
-      children: myChildren.map((c) => ({
-        id: c.id,
-        childCode: c.childCode,
-        name: `${c.firstName} ${c.lastName}`,
-        photoUrl: c.photoUrl,
-        status: c.status,
-        classroom: c.classroom?.name ?? null,
-        todayAttendance: c.attendance[0]?.status ?? "PENDING_CHECKIN",
-        pendingDocsCount: c.documents.length,
-        unpaidTotal: c.invoices.reduce((s, i) => s + i.amount, 0),
-      })),
+      children: categorizedChildren,
       broadcasts,
       conversations: unreadConversations,
     },
