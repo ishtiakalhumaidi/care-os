@@ -5,8 +5,8 @@ export default async function ClassroomDetailPage({ params }: { params: Promise<
   return (
     <ClassroomDetailView
       classroomId={id}
-      basePath="/owner/dashboard/classrooms-management"
-      studentsBasePath="/owner/dashboard/students-management"
+      basePath="/center-admin/dashboard/classrooms-management"
+      studentsBasePath="/center-admin/dashboard/students-management"
     />
   );
 }

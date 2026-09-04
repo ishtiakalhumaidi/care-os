@@ -54,7 +54,6 @@ export default function ClassroomsTable({
 
   const debouncedSearchTerm = useDebounce(searchTerm, 500);
 
-  // Sync URL state (search + page + sort)
   useEffect(() => {
     const params = new URLSearchParams();
     if (debouncedSearchTerm) params.set("searchTerm", debouncedSearchTerm);
@@ -66,7 +65,6 @@ export default function ClassroomsTable({
     router.replace(`${pathname}?${params.toString()}`, { scroll: false });
   }, [debouncedSearchTerm, page, sortOrder, router, pathname]);
 
-  // Build API query string exactly like the server did
   const apiParams = new URLSearchParams(searchParams.toString());
   apiParams.set("sortBy", "createdAt");
   apiParams.set("sortOrder", sortOrder);
@@ -74,7 +72,6 @@ export default function ClassroomsTable({
 
   const currentQueryString = apiParams.toString();
 
-  // Query key matches server prefetch key → no flicker
   const { data, isLoading } = useQuery({
     queryKey: ["classrooms", currentQueryString],
     queryFn: () => getClassrooms(currentQueryString),

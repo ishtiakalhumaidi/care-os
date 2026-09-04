@@ -19,7 +19,7 @@ export default async function StudentsManagementPage() {
         <h2 className="text-2xl font-bold tracking-tight text-foreground">
           Students
         </h2>
-        <StudentsTable basePath="/owner/dashboard/students-management" />
+        <StudentsTable basePath="/center-admin/dashboard/students-management" />
       </div>
     </HydrationBoundary>
   );

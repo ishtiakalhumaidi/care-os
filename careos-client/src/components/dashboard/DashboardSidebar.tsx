@@ -53,12 +53,14 @@ const ownerNavigation: NavItem[] = [
 
 const centerAdminNavigation: NavItem[] = [
   { name: "Dashboard", href: "/center-admin/dashboard", icon: LayoutDashboard },
+  { name: "My Branch", href: "/center-admin/dashboard/branch", icon: Building2 },
   { name: "Broadcasts", href: "/center-admin/dashboard/broadcasts", icon: Megaphone },
   { name: "Classrooms", href: "/center-admin/dashboard/classrooms-management", icon: School },
   { name: "Students", href: "/center-admin/dashboard/students-management", icon: Baby },
   { name: "Guardian Requests", href: "/center-admin/dashboard/guardian-requests", icon: UserCheck },
   { name: "Team", href: "/center-admin/dashboard/team-management", icon: UserPlus },
   { name: "Invoicing", href: "/center-admin/dashboard/billing", icon: Receipt },
+  // { name: "Compliance", href: "/center-admin/dashboard/compliance", icon: FileText }, // Add if they need state reporting
 ];
 
 const teacherNavigation: NavItem[] = [
